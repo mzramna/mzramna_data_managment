@@ -1,11 +1,15 @@
 import csv
 import json
-import os
 import logging
-import mysql.connector
+import os
 from datetime import datetime
 from random import randint
+
+import gspread
+import mysql.connector
 import ntplib
+from gspread.models import Cell
+from oauth2client.service_account import ServiceAccountCredentials
 
 
 class MYfileManager:
@@ -259,3 +263,88 @@ class MYntp():
         if time == "empty":
             time = self.currentTime(self)
         return datetime.utcfromtimestamp(time).strftime('%Y-%m-%d %H:%M:%S')
+
+
+class MYG_Sheets():
+    def __init__(self, json_file):
+        self.creds = ServiceAccountCredentials.from_json_keyfile_name(json_file,
+                                                                      ["https://spreadsheets.google.com/feeds",
+                                                                       "https://www.googleapis.com/auth/spreadsheets",
+                                                                       "https://www.googleapis.com/auth/drive.file",
+                                                                       "https://www.googleapis.com/auth/drive"])
+        self.client = gspread.authorize(self.creds)
+
+    def create_sheet(self, sheet_name, owner=None, public=False):
+        if public:
+            return self.client.create(sheet_name).id
+        elif owner == None:
+            return self.client.create(sheet_name).id
+        else:
+            id = self.client.create(sheet_name).id
+            self.client.insert_permission(id, owner, perm_type="user", role="owner")
+            return id
+
+    def delete_sheet(self, sheet_id):
+        self.client.del_spreadsheet(sheet_id)
+
+    def add_reader_sheet(self, sheet_id, email):
+        self.client.insert_permission(sheet_id, email, perm_type="user", role="reader")
+
+    def add_writer_sheet(self, sheet_id, email):
+        self.client.insert_permission(sheet_id, email, perm_type="user", role="writer")
+
+    def retrive_data(self, sheet_id, page_number, import_range="all"):
+        sheet = self.client.open_by_key(sheet_id)
+        if import_range == "all":
+            return sheet.get_worksheet(page_number).get_all_records()
+        else:
+            return sheet.get_worksheet(page_number).range(import_range)
+
+    def update_data_range(self, sheet_id, page_number, list_of_row, list_of_col, list_of_values):
+        sheet = self.client.open_by_key(sheet_id)
+        try:
+            if len(list_of_col) != len(list_of_row) != len(list_of_values):
+                raise Exception("invalid amount of elemnts on lists")
+            else:
+                cells = []
+                for i in range(0, list_of_values):
+                    cells.append(Cell(row=list_of_row[i], col=list_of_col[i], value=list_of_values[i]))
+                sheet.get_worksheet(page_number).update_cells(cells)
+        except Exception as exp:
+            print(exp.args)
+
+    def update_data_cell(self, sheet_id, page_number, cell_cood, new_value):
+        sheet = self.client.open_by_key(sheet_id)
+        try:
+            if isinstance(cell_cood, str):
+                sheet.get_worksheet(page_number).update_acell(cell_cood, new_value)
+            elif type(cell_cood) == type([]) and len(cell_cood) == 2:
+                sheet.get_worksheet(page_number).update_cell(cell_cood[0], cell_cood[1], new_value)
+            else:
+                raise Exception('invalid input cell_cood')
+        except Exception as error:
+            print(error.args)
+
+    def delete_data_cell(self, sheet_id, page_number, cell_cood):
+        sheet = self.client.open_by_key(sheet_id)
+        try:
+            if isinstance(cell_cood, str):
+                sheet.get_worksheet(page_number).update_acell(cell_cood, "")
+            elif type(cell_cood) == type([]) and len(cell_cood) == 2:
+                sheet.get_worksheet(page_number).update_cell(cell_cood[0], cell_cood[1], "")
+            else:
+                raise Exception('invalid input cell_cood')
+        except Exception as error:
+            print(error.args)
+
+    def delete_data_row(self, sheet_id, page_number, row_id):
+        sheet = self.client.open_by_key(sheet_id)
+        sheet.get_worksheet(page_number).delete_row(row_id)
+
+    def add_page(self, sheet_id, sheet_name, minimum_col=24, minimum_row=10):
+        sheet = self.client.open_by_key(sheet_id)
+        sheet.add_worksheet(title=sheet_name, rows=minimum_row, cols=minimum_col)
+
+    def delete_page(self, sheet_id, page_number):
+        sheet = self.client.open_by_key(sheet_id)
+        sheet.del_worksheet(page_number)
