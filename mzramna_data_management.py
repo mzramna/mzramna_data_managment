@@ -17,18 +17,20 @@ class MYfileManager:
     def __init__(self, loggin_name="fileManager", log_file="filemanager.log"):
         self.logging = loggingSystem.create(loggin_name, filename=log_file)
 
-    def saveFile(self, arrayToSave, arquivo):
+    def saveFile(self, arrayToSave, arquivo, advanced_debug=False):
         with open(arquivo, 'w+') as file:
-            self.logging.debug("salvo dado no arquivo:" + str(arquivo))
+            if advanced_debug:
+                self.logging.debug("salvo dado no arquivo:" + str(arquivo))
             for elemento in arrayToSave:
                 file.write(json.dumps(elemento) + "\n")
             file.flush()
             file.close()
 
-    def readFile(self, arquivo):
+    def readFile(self, arquivo, advanced_debug=False):
         retorno = []
         with open(arquivo, 'r') as file:
-            self.logging.debug("lido dado no arquivo:" + str(arquivo))
+            if advanced_debug:
+                self.logging.debug("lido dado no arquivo:" + str(arquivo))
             linha = file.readline()
             while (linha != ""):
                 retorno.append(json.loads(linha))
@@ -36,33 +38,37 @@ class MYfileManager:
             file.close()
         return retorno
 
-    def saveFileDictArray(self, arrayToSave, arquivo):
+    def saveFileDictArray(self, arrayToSave, arquivo, advanced_debug=False):
         titulos = arrayToSave[0].keys()
         print(titulos)
         csvWrite = csv.DictWriter(open(arquivo, mode='a+'), fieldnames=titulos, delimiter=";")
-        self.logging.debug("salvo dado no arquivo:" + str(arquivo))
+        if advanced_debug :
+            self.logging.debug("salvo dado no arquivo:" + str(arquivo))
         if os.stat(arquivo).st_size == 0:
             csvWrite.writeheader()
         for i in range(0, len(arrayToSave)):
             self.saveFileDict(arrayToSave[i], arquivo)
 
-    def saveFileDict(self, elemento: dict, arquivo):
+    def saveFileDict(self, elemento: dict, arquivo, advanced_debug=False):
         with open(arquivo, mode='a+') as file:
-            self.logging.debug("salvo dado no arquivo:" + str(arquivo))
+            if advanced_debug:
+                self.logging.debug("salvo dado no arquivo:" + str(arquivo))
             titulos = elemento.keys()
             csvWrite = csv.DictWriter(file, fieldnames=titulos, delimiter=";")
             if os.stat(arquivo).st_size == 0:
-                for titulo in elemento:
-                    self.logging.debug(titulo)
+                if advanced_debug:
+                    for titulo in elemento:
+                        self.logging.debug(titulo)
                 csvWrite.writeheader()
             csvWrite.writerow(elemento)
             file.flush()
             file.close()
 
-    def readFileDictArray(self, arquivo):
+    def readFileDictArray(self, arquivo, advanced_debug=False):
         retorno = []
         with open(arquivo, mode='r') as file:
-            self.logging.debug("lido dado no arquivo:" + str(arquivo))
+            if advanced_debug:
+                self.logging.debug("lido dado no arquivo:" + str(arquivo))
             csvReader = csv.DictReader(file, delimiter=";")
             line = 0
             for row in csvReader:
@@ -76,9 +82,10 @@ class MYfileManager:
             file.close()
         return retorno
 
-    def readFileDict(self, arquivo, line):
+    def readFileDict(self, arquivo, line, advanced_debug=False):
         with open(arquivo, mode='r') as file:
-            self.logging.debug("lido dado no arquivo:" + str(arquivo))
+            if advanced_debug:
+                self.logging.debug("lido dado no arquivo:" + str(arquivo))
             csvReader = csv.DictReader(file, delimiter=";")
             for i, row in enumerate(csvReader):
                 if i == line:
@@ -89,7 +96,8 @@ class MYfileManager:
 
 
 class loggingSystem:
-    def create(name, filename='arquivo.log', format='%(name)s - %(levelname)s - %(message)s', level=logging.DEBUG):
+    def __init__(self, name, filename='arquivo.log', format='%(name)s - %(levelname)s - %(message)s',
+                 level=logging.DEBUG):
         formatter = logging.Formatter(format)
         handler = logging.FileHandler(filename)
         handler.setFormatter(formatter)
@@ -266,7 +274,8 @@ class MYntp():
 
 
 class MYG_Sheets():
-    def __init__(self, json_file):
+    def __init__(self, json_file, loggin_name="googleSheets", log_file="googleSheets.log"):
+        self.logging = loggingSystem.create(loggin_name, filename=log_file)
         self.creds = ServiceAccountCredentials.from_json_keyfile_name(json_file,
                                                                       ["https://spreadsheets.google.com/feeds",
                                                                        "https://www.googleapis.com/auth/spreadsheets",
@@ -274,33 +283,66 @@ class MYG_Sheets():
                                                                        "https://www.googleapis.com/auth/drive"])
         self.client = gspread.authorize(self.creds)
 
-    def create_sheet(self, sheet_name, owner=None, public=False):
-        if public:
-            return self.client.create(sheet_name).id
-        elif owner == None:
-            return self.client.create(sheet_name).id
-        else:
-            id = self.client.create(sheet_name).id
-            self.client.insert_permission(id, owner, perm_type="user", role="owner")
-            return id
-
-    def delete_sheet(self, sheet_id):
-        self.client.del_spreadsheet(sheet_id)
-
-    def add_reader_sheet(self, sheet_id, email):
+    def add_reader_sheet(self, sheet_id, email, advanced_debug=False):
         self.client.insert_permission(sheet_id, email, perm_type="user", role="reader")
+        if advanced_debug:
+            self.logging.debug("usuario " + str(email) + " adicionada nova pessoa com permissao de leitura")
 
-    def add_writer_sheet(self, sheet_id, email):
+    def add_writer_sheet(self, sheet_id, email, advanced_debug=False):
         self.client.insert_permission(sheet_id, email, perm_type="user", role="writer")
+        if advanced_debug:
+            self.logging.debug("usuario " + str(email) + " adicionada nova pessoa com permissao de escrita")
 
-    def retrive_data(self, sheet_id, page_number, import_range="all"):
+    def change_owner_sheet(self, sheet_id, email, advanced_debug=False):
+        self.client.insert_permission(sheet_id, email, perm_type="user", role="owner")
+        if advanced_debug:
+            self.logging.debug("arquivo teve propriedade movida para o usuario " + str(email))
+
+    def change_sheet_to_public_read(self, sheet_id, advanced_debug=False):
+        self.client.insert_permission(sheet_id, perm_type="anyone", role="reader")
+        if advanced_debug:
+            self.logging.debug("a planilha com id "+str(sheet_id)+" teve permissão de escrita publica habilitada")
+
+    def change_sheet_to_public_write(self, sheet_id, advanced_debug=False):
+        self.client.insert_permission(sheet_id, perm_type="anyone", role="writer")
+        if advanced_debug:
+            self.logging.debug("a planilha com id "+str(sheet_id)+" teve permissão de leitura publica habilitada")
+
+    def retrive_data(self, sheet_id, page_number, import_range="all", advanced_debug=False):
         sheet = self.client.open_by_key(sheet_id)
         if import_range == "all":
+            if advanced_debug:
+                self.logging.debug("feita consulta na planilha: " + str(sheet_id) + " na página de nome " + str(
+                sheet.get_worksheet(page_number).title) + " e numero " + str(
+                sheet.get_worksheet(page_number).id) + " onde todos os dados foram retornados")
             return sheet.get_worksheet(page_number).get_all_records()
         else:
+            if advanced_debug:
+                self.logging.debug("feita consulta na planilha: " + str(sheet_id) + " na página de nome " + str(
+                sheet.get_worksheet(page_number).title) + " e numero " + str(
+                sheet.get_worksheet(page_number).id) + " onde foram retornados os valores do intervalo: " + str(
+                import_range))
             return sheet.get_worksheet(page_number).range(import_range)
 
-    def update_data_range(self, sheet_id, page_number, list_of_row, list_of_col, list_of_values):
+    def create_sheet(self, sheet_name, owner=None, public_read=False, public_write=False, advanced_debug=False):
+        id = self.client.create(sheet_name).id
+        if advanced_debug:
+            self.logging.debug("planilha criada com nome de " + str(sheet_name) + " e id de " + str(id))
+        if public_read:
+            self.change_sheet_to_public_read(id)
+        if public_write:
+            self.change_sheet_to_public_write(id)
+        if owner != None:
+            self.change_owner_sheet(sheet_id=id, email=owner)
+        return id
+
+    def delete_sheet(self, sheet_id,advanced_debug=False):
+        name = self.client.open_by_key(sheet_id).title
+        self.client.del_spreadsheet(sheet_id)
+        if advanced_debug:
+            self.logging.debug("a planilha com id " + str(sheet_id) + " e nome de " + str(name) + " foi deletada")
+
+    def update_data_range(self, sheet_id, page_number, list_of_row, list_of_col, list_of_values,advanced_debug=False):
         sheet = self.client.open_by_key(sheet_id)
         try:
             if len(list_of_col) != len(list_of_row) != len(list_of_values):
@@ -310,41 +352,61 @@ class MYG_Sheets():
                 for i in range(0, list_of_values):
                     cells.append(Cell(row=list_of_row[i], col=list_of_col[i], value=list_of_values[i]))
                 sheet.get_worksheet(page_number).update_cells(cells)
+                if advanced_debug:
+                    self.logging.debug("foi concluida a inserção de dados na região definida")
         except Exception as exp:
             print(exp.args)
+            self.logging.warning(exp.args)
 
-    def update_data_cell(self, sheet_id, page_number, cell_cood, new_value):
+    def update_data_cell(self, sheet_id, page_number, cell_cood, new_value,advanced_debug=False):
         sheet = self.client.open_by_key(sheet_id)
         try:
             if isinstance(cell_cood, str):
                 sheet.get_worksheet(page_number).update_acell(cell_cood, new_value)
+                if advanced_debug:
+                    self.logging.debug("o intervalo da planilha foi atualizado")
             elif type(cell_cood) == type([]) and len(cell_cood) == 2:
                 sheet.get_worksheet(page_number).update_cell(cell_cood[0], cell_cood[1], new_value)
+                if advanced_debug:
+                    self.logging.debug("o intervalo da planilha foi atualizado")
             else:
                 raise Exception('invalid input cell_cood')
         except Exception as error:
             print(error.args)
+            self.logging.warning(error.args)
 
-    def delete_data_cell(self, sheet_id, page_number, cell_cood):
+    def delete_data_cell(self, sheet_id, page_number, cell_cood,advanced_debug=False):
         sheet = self.client.open_by_key(sheet_id)
         try:
             if isinstance(cell_cood, str):
                 sheet.get_worksheet(page_number).update_acell(cell_cood, "")
+                if advanced_debug:
+                    self.logging.debug("a celula de endereco "+str(cell_cood)+" foi limpa")
             elif type(cell_cood) == type([]) and len(cell_cood) == 2:
                 sheet.get_worksheet(page_number).update_cell(cell_cood[0], cell_cood[1], "")
+                if advanced_debug:
+                    self.logging.debug("a celula de coordenada ["+str(cell_cood[0])+","+str(cell_cood[1])+"] foi limpa")
             else:
-                raise Exception('invalid input cell_cood')
+                raise Exception('invalid input cell_cood',cell_cood)
         except Exception as error:
             print(error.args)
+            self.logging.warning(error.args)
 
-    def delete_data_row(self, sheet_id, page_number, row_id):
+    def delete_data_row(self, sheet_id, page_number, row_id,advanced_debug=False):
         sheet = self.client.open_by_key(sheet_id)
         sheet.get_worksheet(page_number).delete_row(row_id)
+        if advanced_debug:
+            self.logging.debug("a linha de numero "+str(row_id)+" foi apagada")
 
-    def add_page(self, sheet_id, sheet_name, minimum_col=24, minimum_row=10):
+    def add_page(self, sheet_id, sheet_name, minimum_col=24, minimum_row=10,advanced_debug=False):
         sheet = self.client.open_by_key(sheet_id)
-        sheet.add_worksheet(title=sheet_name, rows=minimum_row, cols=minimum_col)
+        id=sheet.add_worksheet(title=sheet_name, rows=minimum_row, cols=minimum_col).id
+        if advanced_debug:
+            self.logging.debug("foi criada uma página nova com titulo "+str(sheet_name)+" seu id é "+str(id))
 
-    def delete_page(self, sheet_id, page_number):
+    def delete_page(self, sheet_id, page_number,advanced_debug=False):
         sheet = self.client.open_by_key(sheet_id)
+        name= self.client.open_by_key(sheet_id).get_worksheet(page_number).title
         sheet.del_worksheet(page_number)
+        if advanced_debug:
+            self.logging.debug("pagina numero "+str(page_number)+"com nome "+str(name)+" foi deletada")
