@@ -20,7 +20,7 @@ class MYfileManager:
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        self.logging = loggingSystem.create(loggin_name, filename=log_file)
+        self.logging = loggingSystem(loggin_name, filename=log_file)
 
     def saveFile(self, arrayToSave, arquivo, advanced_debug=False):
         """
@@ -157,8 +157,7 @@ class loggingSystem:
         logger = logging.getLogger(name)
         logger.setLevel(level)
         logger.addHandler(handler)
-
-        return logger
+        self.debug=logger.debug
 
 
 class MYmysql:
@@ -173,7 +172,7 @@ class MYmysql:
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        self.logging = loggingSystem.create(loggin_name, filename=log_file)
+        self.logging = loggingSystem(loggin_name, filename=log_file)
 
         self.db_connection = mysql.connector.connect(
             host=host,
@@ -403,7 +402,7 @@ class MYG_Sheets():
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        self.logging = loggingSystem.create(loggin_name, filename=log_file)
+        self.logging = loggingSystem(loggin_name, arquivo=log_file)
         self.creds = ServiceAccountCredentials.from_json_keyfile_name(json_file,
                                                                       ["https://spreadsheets.google.com/feeds",
                                                                        "https://www.googleapis.com/auth/spreadsheets",
@@ -454,7 +453,7 @@ class MYG_Sheets():
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
-        self.client.insert_permission(sheet_id, perm_type="anyone", role="reader")
+        self.client.insert_permission(sheet_id,value=None, perm_type="anyone", role="reader")
         if advanced_debug:
             self.logging.debug("a planilha com id " + str(sheet_id) + " teve permissão de escrita publica habilitada")
 
@@ -465,7 +464,7 @@ class MYG_Sheets():
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
-        self.client.insert_permission(sheet_id, perm_type="anyone", role="writer")
+        self.client.insert_permission(sheet_id,value=None, perm_type="anyone", role="writer")
         if advanced_debug:
             self.logging.debug("a planilha com id " + str(sheet_id) + " teve permissão de leitura publica habilitada")
 
@@ -654,20 +653,21 @@ class MYG_Sheets():
         if advanced_debug:
             self.logging.debug("a linha de numero " + str(row_id) + " foi apagada")
 
-    def add_page(self, sheet_id, sheet_name, minimum_col=24, minimum_row=10, advanced_debug=False):
+    def add_page(self, sheet_id, page_name, minimum_col=24, minimum_row=10, advanced_debug=False):
         """
 
         :param sheet_id: id da planilha google sheets
-        :param sheet_name: nome da planilha google sheets
+        :param page_name: nome da nova pagina da planilha
         :param minimum_col:
         :param minimum_row:
         :param advanced_debug: ativa o sistema de logging se definido para True
-        :return:
+        :return: id da nova página criada
         """
         sheet = self.client.open_by_key(sheet_id)
-        id = sheet.add_worksheet(title=sheet_name, rows=minimum_row, cols=minimum_col).id
+        id = sheet.add_worksheet(title=page_name, rows=minimum_row, cols=minimum_col).id
         if advanced_debug:
-            self.logging.debug("foi criada uma página nova com titulo " + str(sheet_name) + " seu id é " + str(id))
+            self.logging.debug("foi criada uma página nova com titulo " + str(page_name) + " seu id é " + str(id))
+        return id
 
     def delete_page(self, sheet_id, page_number, advanced_debug=False):
         """
