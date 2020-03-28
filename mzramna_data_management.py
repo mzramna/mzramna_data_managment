@@ -141,17 +141,17 @@ class MYfileManager:
 
 
 class loggingSystem:
-    def __init__(self, name, filename='arquivo.log', format='%(name)s - %(levelname)s - %(message)s',
+    def __init__(self, name, arquivo='arquivo.log', format='%(name)s - %(levelname)s - %(message)s',
                  level=logging.DEBUG):
         """
 
         :param name: nome do log a ser escrito no arquivo
-        :param filename: nome do arquivo a ser utilizado
+        :param arquivo: nome do arquivo a ser utilizado
         :param format: formato do texto a ser inserido no output do log
         :param level: nivel de log padrão de saida
         """
         formatter = logging.Formatter(format)
-        handler = logging.FileHandler(filename)
+        handler = logging.FileHandler(arquivo)
         handler.setFormatter(formatter)
 
         logger = logging.getLogger(name)
@@ -473,7 +473,7 @@ class MYG_Sheets():
         """
 
         :param sheet_id: id da planilha google sheets
-        :param page_number:
+        :param page_number: pagina da planilha a ser editada
         :param import_range:
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
@@ -501,17 +501,17 @@ class MYG_Sheets():
         :param public_read:
         :param public_write:
         :param advanced_debug: ativa o sistema de logging se definido para True
-        :return:
+        :return: o id da nova coluna
         """
         id = self.client.create(sheet_name).id
         if advanced_debug:
             self.logging.debug("planilha criada com nome de " + str(sheet_name) + " e id de " + str(id))
         if public_read:
-            self.change_sheet_to_public_read(id)
+            self.change_sheet_to_public_read(id, advanced_debug=advanced_debug)
         if public_write:
-            self.change_sheet_to_public_write(id)
+            self.change_sheet_to_public_write(id, advanced_debug=advanced_debug)
         if owner != None:
-            self.change_owner_sheet(sheet_id=id, email=owner)
+            self.change_owner_sheet(sheet_id=id, email=owner, advanced_debug=advanced_debug)
         return id
 
     def delete_sheet(self, sheet_id, advanced_debug=False):
@@ -530,10 +530,11 @@ class MYG_Sheets():
         """
 
         :param sheet_id: id da planilha google sheets
-        :param page_number:
-        :param list_of_row:
-        :param list_of_col:
-        :param list_of_values:
+        :param page_number: pagina da planilha a ser editada
+        :param list_of_row: lista com as linhas das celulas que serão editadas
+        :param list_of_col: lista com as colunas das celulas que serão editadas
+        :param list_of_values: lista com valores novos das celulas que serão editadas
+        as tres listas devem ser encaradas como uma matriz 2d unica de 3 colunas
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
@@ -556,9 +557,9 @@ class MYG_Sheets():
         """
 
         :param sheet_id: id da planilha google sheets
-        :param page_number:
-        :param cell_cood:
-        :param new_value:
+        :param page_number: pagina da planilha a ser editada
+        :param cell_cood: coordenada da celula a ser manipulada,podendo ser coordenadas [x,y] em formato de array 1d,ou string padrão de excell "A1"
+        :param new_value: novo valor a ser inserido
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
@@ -582,8 +583,8 @@ class MYG_Sheets():
         """
 
         :param sheet_id: id da planilha google sheets
-        :param page_number:
-        :param cell_cood:
+        :param page_number: pagina da planilha a ser editada
+        :param cell_cood: coordenada da celula a ser manipulada,podendo ser coordenadas [x,y] em formato de array 1d,ou string padrão de excell "A1"
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
@@ -604,12 +605,47 @@ class MYG_Sheets():
             print(error.args)
             self.logging.warning(error.args)
 
+    def add_data_row(self, sheet_id, page_number, elemento: dict, row_id=None, advanced_debug=False):
+        """
+
+        :param sheet_id: id da planilha google sheets
+        :param page_number: pagina da planilha a ser editada
+        :param elemento: dictionary com os elementos a serem inseridos
+        :param row_id: numero da linha a ser inserida,se em branco apenas insere ao final do arquivo
+        :param advanced_debug: ativa o sistema de logging se definido para True
+        :return:
+        """
+        sheet = self.client.open_by_key(sheet_id)
+        headers = sheet.get_worksheet(page_number).row_values(1)
+        reordened = []
+        try:
+            if headers != []:
+                for element in elemento:
+                    if element not in headers:
+                        raise Exception('header incompatible')
+            else:
+                sheet.get_worksheet(page_number).append_row(elemento.keys)
+        except Exception as error:
+            print(error.args)
+            self.logging.warning(error.args)
+
+        for header in headers:
+            reordened.append(elemento[header])
+        if row_id != None:
+            sheet.get_worksheet(page_number).insert_row(reordened, index=row_id)
+            if advanced_debug:
+                self.logging.debug("a linha de numero " + str(row_id) + " foi adicionada")
+        else:
+            sheet.get_worksheet(page_number).append_row(reordened)
+            if advanced_debug:
+                self.logging.debug("a linha foi adicionada ao final do arquivo")
+
     def delete_data_row(self, sheet_id, page_number, row_id, advanced_debug=False):
         """
 
         :param sheet_id: id da planilha google sheets
-        :param page_number:
-        :param row_id:
+        :param page_number: pagina da planilha a ser editada
+        :param row_id: numero da linha a ser manipulada
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
@@ -637,7 +673,7 @@ class MYG_Sheets():
         """
 
         :param sheet_id: id da planilha google sheets
-        :param page_number: numero da página da planilha
+        :param page_number: pagina da planilha a ser editada numero da página da planilha
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
