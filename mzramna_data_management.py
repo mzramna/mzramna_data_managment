@@ -433,11 +433,11 @@ class MYG_Sheets():
         if type(page_number) == type(""):
             page = sheet.worksheet(page_number)
             if advanced_debug:
-                self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + "selecionada")
+                self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + " selecionada")
         elif type(page_number) == type(1):
             page = sheet.get_worksheet(page_number)
             if advanced_debug:
-                self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + "selecionada")
+                self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + " selecionada")
 
         return page
 
@@ -654,12 +654,14 @@ class MYG_Sheets():
         sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
         page = self.select_page(sheet=sheet, page_number=page_number, advanced_debug=advanced_debug)
         headers = page.row_values(1)
-        try:
-            if page.col_count() > row_id:
-                raise Exception("unreachable row")
-        except Exception as error:
-            print(error.args)
-            self.logging.error(error.args)
+        if row_id!=None:
+            try:
+                if page.col_count() > row_id :
+                    raise Exception("unreachable row")
+            except Exception as error:
+                print(error.args)
+                self.logging.error(error.args)
+                return None
         reordened = {}
         try:
             if headers != []:
@@ -671,6 +673,7 @@ class MYG_Sheets():
         except Exception as error:
             print(error.args)
             self.logging.error(error.args)
+            return None
 
         for header in headers:
             reordened[header] = elemento[header]
@@ -684,7 +687,7 @@ class MYG_Sheets():
                     vazio=False
                     break
             if substitute and not vazio:
-                page.delete_row(row_id)
+                self.delete_data_row( sheet_id, page_number, row_id, advanced_debug=False)
             page.insert_row(elemento, index=row_id)
             if advanced_debug:
                 self.logging.debug("a linha de numero " + str(row_id) + " foi adicionada")
