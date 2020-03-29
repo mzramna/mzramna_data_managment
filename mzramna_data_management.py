@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from datetime import datetime
+from pprint import pprint
 from random import randint
 
 import gspread
@@ -14,7 +15,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 class MYfileManager:
 
-    def __init__(self, loggin_name="fileManager", log_file="filemanager.log"):
+    def __init__(self, loggin_name="fileManager", log_file="./filemanager.log"):
         """
         classe para gerenciar arquivos
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
@@ -58,9 +59,9 @@ class MYfileManager:
 
     def saveFileDictArray(self, arrayToSave, arquivo, advanced_debug=False):
         """
-
+        função para salvar arquivos de tipo csv
         :param arrayToSave: array de tipo dictionary para ser salvo no arquivo
-        :param arquivo: nome do arquivo a ser acessado
+        :param arquivo: nome do arquivo csv a ser acessado
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
@@ -76,9 +77,9 @@ class MYfileManager:
 
     def saveFileDict(self, elemento: dict, arquivo, advanced_debug=False):
         """
-
+        função para salvar arquivos de tipo csv
         :param elemento: elemento de tipo dictionary para ser salvo ao arquivo
-        :param arquivo: nome do arquivo a ser acessado
+        :param arquivo: nome do arquivo csv a ser acessado
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
@@ -98,8 +99,8 @@ class MYfileManager:
 
     def readFileDictArray(self, arquivo, advanced_debug=False):
         """
-
-        :param arquivo: nome do arquivo a ser acessado
+        função para ler arquivos de tipo csv
+        :param arquivo: nome do arquivo csv a ser acessado
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
@@ -122,8 +123,8 @@ class MYfileManager:
 
     def readFileDict(self, arquivo, line, advanced_debug=False):
         """
-
-        :param arquivo: nome do arquivo a ser acessado
+        função para ler arquivos de tipo csv
+        :param arquivo: nome do arquivo csv a ser acessado
         :param line: linha do arquivo a ser lida
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
@@ -141,7 +142,7 @@ class MYfileManager:
 
 
 class loggingSystem:
-    def __init__(self, name, arquivo='arquivo.log', format='%(name)s - %(levelname)s - %(message)s',
+    def __init__(self, name, arquivo='./arquivo.log', format='%(name)s - %(levelname)s - %(message)s',
                  level=logging.DEBUG):
         """
 
@@ -153,16 +154,25 @@ class loggingSystem:
         formatter = logging.Formatter(format)
         handler = logging.FileHandler(arquivo)
         handler.setFormatter(formatter)
-
+        f = open(arquivo, "w+")
+        f.write("")
+        f.close()
         logger = logging.getLogger(name)
         logger.setLevel(level)
         logger.addHandler(handler)
-        self.debug=logger.debug
+        self.debug = logger.debug
+        self.warning = logger.warning
+        self.error = logger.error
+        self.info = logger.info
+        self.log = logger.log
+        self.critical = logger.critical
+        self.setlevel = logger.setLevel
+        self.fatal = logger.fatal
 
 
 class MYmysql:
 
-    def __init__(self, user, passwd, host, database, loggin_name="mysql", log_file="mysql.log"):
+    def __init__(self, user, passwd, host, database, loggin_name="mysql", log_file="./mysql.log"):
         """
         classe para gerenciar banco de dados mysql
         :param user: usuario mysql para acessar o banco de dados
@@ -396,19 +406,40 @@ class MYntp():
 
 
 class MYG_Sheets():
-    def __init__(self, json_file, loggin_name="googleSheets", log_file="googleSheets.log"):
+    def __init__(self, json_file, loggin_name="googleSheets", log_file="./googleSheets.log"):
         """
         classe para gerenciar arquivos google sheets
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
         self.logging = loggingSystem(loggin_name, arquivo=log_file)
+
         self.creds = ServiceAccountCredentials.from_json_keyfile_name(json_file,
                                                                       ["https://spreadsheets.google.com/feeds",
                                                                        "https://www.googleapis.com/auth/spreadsheets",
                                                                        "https://www.googleapis.com/auth/drive.file",
                                                                        "https://www.googleapis.com/auth/drive"])
         self.client = gspread.authorize(self.creds)
+
+    def load_sheet(self, sheet_id, advanced_debug=False):
+        sheet = self.client.open_by_key(sheet_id)
+        if advanced_debug:
+            self.logging.debug("planilha carregada: " + str(type(sheet)))
+            # print(sheet.title)
+        return sheet
+
+    def select_page(self, sheet, page_number, advanced_debug=False):
+        page = None
+        if type(page_number) == type(""):
+            page = sheet.worksheet(page_number)
+            if advanced_debug:
+                self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + "selecionada")
+        elif type(page_number) == type(1):
+            page = sheet.get_worksheet(page_number)
+            if advanced_debug:
+                self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + "selecionada")
+
+        return page
 
     def add_reader_sheet(self, sheet_id, email, advanced_debug=False):
         """
@@ -453,7 +484,7 @@ class MYG_Sheets():
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
-        self.client.insert_permission(sheet_id,value=None, perm_type="anyone", role="reader")
+        self.client.insert_permission(sheet_id, value=None, perm_type="anyone", role="reader")
         if advanced_debug:
             self.logging.debug("a planilha com id " + str(sheet_id) + " teve permissão de escrita publica habilitada")
 
@@ -464,7 +495,7 @@ class MYG_Sheets():
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
-        self.client.insert_permission(sheet_id,value=None, perm_type="anyone", role="writer")
+        self.client.insert_permission(sheet_id, value=None, perm_type="anyone", role="writer")
         if advanced_debug:
             self.logging.debug("a planilha com id " + str(sheet_id) + " teve permissão de leitura publica habilitada")
 
@@ -477,30 +508,31 @@ class MYG_Sheets():
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
-        sheet = self.client.open_by_key(sheet_id)
+        sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+        page = self.select_page(sheet=sheet, page_number=page_number, advanced_debug=advanced_debug)
         if import_range == "all":
             if advanced_debug:
                 self.logging.debug("feita consulta na planilha: " + str(sheet_id) + " na página de nome " + str(
-                    sheet.get_worksheet(page_number).title) + " e numero " + str(
-                    sheet.get_worksheet(page_number).id) + " onde todos os dados foram retornados")
-            return sheet.get_worksheet(page_number).get_all_records()
+                    page.title) + " e numero " + str(
+                    page.id) + " onde todos os dados foram retornados")
+            return page.get_all_records()
         else:
             if advanced_debug:
                 self.logging.debug("feita consulta na planilha: " + str(sheet_id) + " na página de nome " + str(
                     sheet.get_worksheet(page_number).title) + " e numero " + str(
                     sheet.get_worksheet(page_number).id) + " onde foram retornados os valores do intervalo: " + str(
                     import_range))
-            return sheet.get_worksheet(page_number).range(import_range)
+            return page.range(import_range)
 
     def create_sheet(self, sheet_name, owner=None, public_read=False, public_write=False, advanced_debug=False):
         """
 
         :param sheet_name: nome da planilha google sheets
-        :param owner:
-        :param public_read:
-        :param public_write:
+        :param owner: email do novo dono da planilha
+        :param public_read: habilita o arquivo para leitura pública
+        :param public_write: habilita o arquivo para escrita púlica
         :param advanced_debug: ativa o sistema de logging se definido para True
-        :return: o id da nova coluna
+        :return: o id da nova planilha
         """
         id = self.client.create(sheet_name).id
         if advanced_debug:
@@ -520,7 +552,7 @@ class MYG_Sheets():
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
-        name = self.client.open_by_key(sheet_id).title
+        name = self.load_sheet(sheet_id, advanced_debug=advanced_debug).title
         self.client.del_spreadsheet(sheet_id)
         if advanced_debug:
             self.logging.debug("a planilha com id " + str(sheet_id) + " e nome de " + str(name) + " foi deletada")
@@ -537,7 +569,8 @@ class MYG_Sheets():
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
-        sheet = self.client.open_by_key(sheet_id)
+        sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+        page = self.select_page(sheet=sheet, page_number=page_number, advanced_debug=advanced_debug)
         try:
             if len(list_of_col) != len(list_of_row) != len(list_of_values):
                 raise Exception("invalid amount of elemnts on lists")
@@ -545,12 +578,12 @@ class MYG_Sheets():
                 cells = []
                 for i in range(0, list_of_values):
                     cells.append(Cell(row=list_of_row[i], col=list_of_col[i], value=list_of_values[i]))
-                sheet.get_worksheet(page_number).update_cells(cells)
+                page.update_cells(cells)
                 if advanced_debug:
                     self.logging.debug("foi concluida a inserção de dados na região definida")
         except Exception as exp:
             print(exp.args)
-            self.logging.warning(exp.args)
+            self.logging.error(exp.args)
 
     def update_data_cell(self, sheet_id, page_number, cell_cood, new_value, advanced_debug=False):
         """
@@ -562,21 +595,22 @@ class MYG_Sheets():
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
-        sheet = self.client.open_by_key(sheet_id)
+        sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+        page = self.select_page(sheet=sheet, page_number=page_number, advanced_debug=advanced_debug)
         try:
             if isinstance(cell_cood, str):
-                sheet.get_worksheet(page_number).update_acell(cell_cood, new_value)
+                page.update_acell(cell_cood, new_value)
                 if advanced_debug:
                     self.logging.debug("o intervalo da planilha foi atualizado")
             elif type(cell_cood) == type([]) and len(cell_cood) == 2:
-                sheet.get_worksheet(page_number).update_cell(cell_cood[0], cell_cood[1], new_value)
+                page.update_cell(cell_cood[0], cell_cood[1], new_value)
                 if advanced_debug:
                     self.logging.debug("o intervalo da planilha foi atualizado")
             else:
                 raise Exception('invalid input cell_cood')
         except Exception as error:
             print(error.args)
-            self.logging.warning(error.args)
+            self.logging.error(error.args)
 
     def delete_data_cell(self, sheet_id, page_number, cell_cood, advanced_debug=False):
         """
@@ -587,14 +621,15 @@ class MYG_Sheets():
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
-        sheet = self.client.open_by_key(sheet_id)
+        sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+        page = self.select_page(sheet=sheet, page_number=page_number, advanced_debug=advanced_debug)
         try:
             if isinstance(cell_cood, str):
-                sheet.get_worksheet(page_number).update_acell(cell_cood, "")
+                page.update_acell(cell_cood, "")
                 if advanced_debug:
                     self.logging.debug("a celula de endereco " + str(cell_cood) + " foi limpa")
             elif type(cell_cood) == type([]) and len(cell_cood) == 2:
-                sheet.get_worksheet(page_number).update_cell(cell_cood[0], cell_cood[1], "")
+                page.update_cell(cell_cood[0], cell_cood[1], "")
                 if advanced_debug:
                     self.logging.debug(
                         "a celula de coordenada [" + str(cell_cood[0]) + "," + str(cell_cood[1]) + "] foi limpa")
@@ -602,9 +637,9 @@ class MYG_Sheets():
                 raise Exception('invalid input cell_cood', cell_cood)
         except Exception as error:
             print(error.args)
-            self.logging.warning(error.args)
+            self.logging.error(error.args)
 
-    def add_data_row(self, sheet_id, page_number, elemento: dict, row_id=None, advanced_debug=False):
+    def add_data_row(self, sheet_id, page_number, elemento: dict, row_id=None,substitute=False, advanced_debug=False):
         """
 
         :param sheet_id: id da planilha google sheets
@@ -612,30 +647,49 @@ class MYG_Sheets():
         :param elemento: dictionary com os elementos a serem inseridos
         :param row_id: numero da linha a ser inserida,se em branco apenas insere ao final do arquivo
         :param advanced_debug: ativa o sistema de logging se definido para True
+        :param substitute: se a linha selecionada por row_id não estiver em branco substitui ela,caso contrário ela será passada para a linha a baixo
         :return:
         """
-        sheet = self.client.open_by_key(sheet_id)
-        headers = sheet.get_worksheet(page_number).row_values(1)
-        reordened = []
+
+        sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+        page = self.select_page(sheet=sheet, page_number=page_number, advanced_debug=advanced_debug)
+        headers = page.row_values(1)
+        try:
+            if page.col_count() > row_id:
+                raise Exception("unreachable row")
+        except Exception as error:
+            print(error.args)
+            self.logging.error(error.args)
+        reordened = {}
         try:
             if headers != []:
                 for element in elemento:
                     if element not in headers:
                         raise Exception('header incompatible')
             else:
-                sheet.get_worksheet(page_number).append_row(elemento.keys)
+                page.insert_row([k for k in elemento.keys()], index=1)
         except Exception as error:
             print(error.args)
-            self.logging.warning(error.args)
+            self.logging.error(error.args)
 
         for header in headers:
-            reordened.append(elemento[header])
+            reordened[header] = elemento[header]
+        elemento=[]
+        for reorder in reordened:
+            elemento.append(reordened[reorder])
         if row_id != None:
-            sheet.get_worksheet(page_number).insert_row(reordened, index=row_id)
+            vazio=True
+            for value in page.row_values(row_id):
+                if value != "":
+                    vazio=False
+                    break
+            if substitute and not vazio:
+                page.delete_row(row_id)
+            page.insert_row(elemento, index=row_id)
             if advanced_debug:
                 self.logging.debug("a linha de numero " + str(row_id) + " foi adicionada")
         else:
-            sheet.get_worksheet(page_number).append_row(reordened)
+            page.append_row(elemento)
             if advanced_debug:
                 self.logging.debug("a linha foi adicionada ao final do arquivo")
 
@@ -648,7 +702,7 @@ class MYG_Sheets():
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
-        sheet = self.client.open_by_key(sheet_id)
+        sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
         sheet.get_worksheet(page_number).delete_row(row_id)
         if advanced_debug:
             self.logging.debug("a linha de numero " + str(row_id) + " foi apagada")
@@ -663,7 +717,7 @@ class MYG_Sheets():
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return: id da nova página criada
         """
-        sheet = self.client.open_by_key(sheet_id)
+        sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
         id = sheet.add_worksheet(title=page_name, rows=minimum_row, cols=minimum_col).id
         if advanced_debug:
             self.logging.debug("foi criada uma página nova com titulo " + str(page_name) + " seu id é " + str(id))
@@ -677,7 +731,7 @@ class MYG_Sheets():
         :param advanced_debug: ativa o sistema de logging se definido para True
         :return:
         """
-        sheet = self.client.open_by_key(sheet_id)
+        sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
         name = self.client.open_by_key(sheet_id).get_worksheet(page_number).title
         sheet.del_worksheet(page_number)
         if advanced_debug:
