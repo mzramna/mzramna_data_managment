@@ -9,7 +9,10 @@ import gspread
 import mysql.connector
 import ntplib
 from gspread.models import Cell
+from oauth2client.client import OAuth2WebServerFlow
+from oauth2client.file import Storage
 from oauth2client.service_account import ServiceAccountCredentials
+from oauth2client.tools import run_flow
 
 
 class MYcsv:
@@ -66,20 +69,17 @@ class MYcsv:
         função para ler arquivos de tipo csv
         :param arquivo: nome do arquivo csv a ser acessado
         :param advanced_debug: ativa o sistema de logging se definido para True
-        :return:
+        :return: array de dict dentro do arquivo csv
         """
         retorno = []
         with open(arquivo, mode='r') as file:
             if advanced_debug:
                 self.logging.debug("lido dado no arquivo:" + str(arquivo))
             csvReader = csv.DictReader(file, delimiter=";")
-            line = 0
+            line = 1
             for row in csvReader:
-                if line == 0:
-                    line += 1
-                else:
-                    retorno.append(row)
-                    line += 1
+                retorno.append(row)
+                line += 1
             self.logging.debug("total de linhas lido: " + str(line))
             file.flush()
             file.close()
@@ -91,7 +91,7 @@ class MYcsv:
         :param arquivo: nome do arquivo csv a ser acessado
         :param line: linha do arquivo a ser lida
         :param advanced_debug: ativa o sistema de logging se definido para True
-        :return:
+        :return: dict dentro do arquivo csv
         """
         with open(arquivo, mode='r') as file:
             if advanced_debug:
@@ -135,7 +135,7 @@ class MYjson:
 
         :param arquivo: nome do arquivo a ser acessado
         :param advanced_debug: ativa o sistema de logging se definido para True
-        :return:
+        :return: dictionary gerado a partir do arquivo lido
         """
         retorno = []
         with open(arquivo, 'r') as file:
@@ -411,6 +411,25 @@ class MYntp:
         if time == "empty":
             time = self.currentTime(self)
         return datetime.utcfromtimestamp(time).strftime('%Y-%m-%d %H:%M:%S')
+
+
+class oauthAcess:
+
+    def __init__(self, CLIENT_ID, CLIENT_SECRET):
+        self.CLIENT_ID = CLIENT_ID
+        self.CLIENT_SECRET = CLIENT_SECRET
+    def get_cred_from_browser(self):
+        flow = OAuth2WebServerFlow(client_id=self.CLIENT_ID,
+                                   client_secret=self.CLIENT_SECRET,
+                                   scope='https://spreadsheets.google.com/feeds https://docs.google.com/feeds',
+                                   redirect_uri='http://example.com/auth_return')
+
+        storage = Storage('creds.data')
+
+        credentials = run_flow(flow, storage)
+
+        print("access_token: %s" % credentials.access_token)
+        return credentials
 
 
 class MYG_Sheets:
