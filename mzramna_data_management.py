@@ -23,7 +23,7 @@ class MYcsv:
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        self.logging = loggingSystem(loggin_name, filename=log_file)
+        self.logging = loggingSystem(loggin_name, arquivo=log_file)
 
     def saveFileDictArray(self, arrayToSave, arquivo, advanced_debug=False):
         """
@@ -113,7 +113,7 @@ class MYjson:
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        self.logging = loggingSystem(loggin_name, filename=log_file)
+        self.logging = loggingSystem(loggin_name, arquivo=log_file)
 
     def saveFile(self, arrayToSave, arquivo, advanced_debug=False):
         """
@@ -191,7 +191,7 @@ class MYmysql:
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        self.logging = loggingSystem(loggin_name, filename=log_file)
+        self.logging = loggingSystem(loggin_name, arquivo=log_file)
 
         self.db_connection = mysql.connector.connect(
             host=host,
@@ -875,6 +875,14 @@ class MYG_Sheets:
 
 
 class DictTools:
+    def __init__(self, loggin_name="DictTools", log_file="./DictTools.log"):
+        """
+        classe para gerenciar o tipo dictionary de forma mais simples
+        :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
+        :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
+        """
+        self.logging = loggingSystem(loggin_name, arquivo=log_file)
+
     def normalize_index(self, dictionary_array: [dict], index, advanced_debug=False):
         try:
             if type(index) == type(""):
@@ -882,7 +890,7 @@ class DictTools:
                 if advanced_debug:
                     self.logging.debug("string")
             elif type(index) == type(1):
-                index = dictionary_array.keys()[index]
+                index = list(dictionary_array[0].keys())[index]
                 if advanced_debug:
                     self.logging.debug("integer")
             else:
