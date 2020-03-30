@@ -567,8 +567,10 @@ class MYG_Sheets:
         page_row = page.row_count
         page_name = page.title
         self.delete_page(sheet, page, advanced_debug=advanced_debug)
-        page=self.add_page(sheet, page_name, minimum_col=page_col, minimum_row=page_row, advanced_debug=advanced_debug)
+        page = self.add_page(sheet, page_name, minimum_col=page_col, minimum_row=page_row,
+                             advanced_debug=advanced_debug)
         return page
+
     def add_reader_sheet(self, sheet_id, email, advanced_debug=False):
         """
 
@@ -694,7 +696,7 @@ class MYG_Sheets:
         if advanced_debug:
             self.logging.debug("a planilha com id " + str(sheet_id) + " e nome de " + str(name) + " foi deletada")
 
-    def update_data_range(self, sheet_id, page_number, list_of_row, list_of_col, list_of_values, advanced_debug=False):
+    def update_data_range(self, sheet_id, page_number, list_of_row:[], list_of_col:[], list_of_values:[], advanced_debug=False):
         """
 
         :param sheet_id: id da planilha google sheets
@@ -713,7 +715,7 @@ class MYG_Sheets:
                 raise Exception("invalid amount of elemnts on lists")
             else:
                 cells = []
-                for i in range(0, list_of_values):
+                for i in range(0, len(list_of_values)):
                     cells.append(Cell(row=list_of_row[i], col=list_of_col[i], value=list_of_values[i]))
                 page.update_cells(cells)
                 if advanced_debug:
@@ -952,3 +954,29 @@ class DictTools:
             self.logging.debug("pos ordenacao")
             self.logging.debug(retorno)
         return retorno
+
+    def dict_to_multi_d_array(self, dictionary_array: [dict], advanced_debug=False):
+        arrays = []
+        for key in list(dictionary_array[0].keys()):
+            arrays.append([])
+            for element in dictionary_array:
+                arrays[-1].append(element[key])
+        return arrays
+
+    def dict_to_cood_array(self, dictionary_array: [dict], element_orientation="row", advanced_debug=False):
+        twodarray = self.dict_to_multi_d_array(dictionary_array, advanced_debug=advanced_debug)
+        if element_orientation == "row":
+            processedArray = []
+        elif element_orientation == "col":
+            processedArray = [], [], []
+        for x in range(0, len(twodarray)):
+            for y in range(0, len(twodarray[x])):
+                if element_orientation == "row":
+                    tmp = [x, y, twodarray[y][x]]
+                    processedArray.append(tmp)
+                elif element_orientation == "col":
+                    processedArray[0].append(x)
+                    processedArray[1].append(y)
+                    processedArray[2].append(twodarray[x][y])
+
+        return processedArray
