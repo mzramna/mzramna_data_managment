@@ -483,18 +483,18 @@ class oauthAcess:
             if os.path.isfile(storage):
                 if advanced_debug:
                     self.logging.debug("arquivo storage encontrado")
-                credentials= self.get_cred_from_browser(storage=storage, advanced_debug=advanced_debug)
+                credentials = self.get_cred_from_browser(storage=storage, advanced_debug=advanced_debug)
             elif not os.path.isfile(json):  # arquivo json não existe
                 raise Exception("invalid input")
 
             elif not os.path.isfile(storage):  # arquivo storage n existe
                 if advanced_debug:
                     self.logging.debug("não existe arquivo storage")
-                credentials= self.get_cred_from_browser(json=json, storage=storage, advanced_debug=advanced_debug)
+                credentials = self.get_cred_from_browser(json=json, storage=storage, advanced_debug=advanced_debug)
 
             if type(credentials) != client.OAuth2Credentials:
                 return self.get_cred_automatic(json=json, advanced_debug=advanced_debug)
-            else :
+            else:
                 return credentials
         except Exception as exp:
             print(exp.args)
@@ -872,3 +872,62 @@ class MYG_Sheets:
         page_number = self.select_page(sheet_id, page_number, advanced_debug=advanced_debug)
         for i in range(0, len(row_ids)):
             self.delete_data_row(sheet_id, page_number, row_ids[i] - i, advanced_debug=advanced_debug)
+
+
+class DictTools:
+    def normalize_index(self, dictionary_array: [dict], index, advanced_debug=False):
+        try:
+            if type(index) == type(""):
+                index = index
+                if advanced_debug:
+                    self.logging.debug("string")
+            elif type(index) == type(1):
+                index = dictionary_array.keys()[index]
+                if advanced_debug:
+                    self.logging.debug("integer")
+            else:
+                raise Exception("invalid array type")
+        except Exception as error:
+            print(error.args)
+            self.logging.error(error.args)
+            return None
+        return index
+
+    def sorter(self, dictionary_array: [dict], orderBy, reverse=False, advanced_debug=False):
+        if advanced_debug:
+            self.logging.debug("pre ordenacao")
+            self.logging.debug(dictionary_array)
+        orderBy = self.normalize_index(dictionary_array=dictionary_array, index=orderBy)
+        retorno = sorted(dictionary_array, key=lambda k: k[orderBy], reverse=reverse)
+        if advanced_debug:
+            self.logging.debug("pos ordenacao")
+            self.logging.debug(retorno)
+        return retorno
+
+    def case_changer(self, dictionary_array: [dict], column: [], case="lower", advanced_debug=False):
+        if advanced_debug:
+            self.logging.debug("pre ordenacao")
+            self.logging.debug(dictionary_array)
+
+        newcolumn = []
+        for i in column:
+            newcolumn.append(self.normalize_index(dictionary_array, i, advanced_debug=advanced_debug))
+        retorno = []
+        try:
+            for index in dictionary_array:
+                for i in newcolumn:
+                    if case == "lower":
+                        index[i] = index[i].lower()
+                    elif case == "upper":
+                        index[i] = index[i].upper()
+                    else:
+                        raise Exception("invalid case type")
+                retorno.append(index)
+        except Exception as error:
+            print(error.args)
+            self.logging.error(error.args)
+            return None
+        if advanced_debug:
+            self.logging.debug("pos ordenacao")
+            self.logging.debug(retorno)
+        return retorno
