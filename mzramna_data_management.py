@@ -3,7 +3,6 @@ import json
 import logging
 import os
 from datetime import datetime
-from pprint import pprint
 from random import randint
 
 import gspread
@@ -421,13 +420,6 @@ class MYG_Sheets():
                                                                        "https://www.googleapis.com/auth/drive"])
         self.client = gspread.authorize(self.creds)
 
-    def load_sheet(self, sheet_id, advanced_debug=False):
-        sheet = self.client.open_by_key(sheet_id)
-        if advanced_debug:
-            self.logging.debug("planilha carregada: " + str(type(sheet)))
-            # print(sheet.title)
-        return sheet
-
     def select_page(self, sheet, page_number, advanced_debug=False):
         page = None
         if type(page_number) == type(""):
@@ -440,6 +432,37 @@ class MYG_Sheets():
                 self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + " selecionada")
 
         return page
+
+    def add_page(self, sheet_id, page_name, minimum_col=24, minimum_row=1, advanced_debug=False):
+        """
+
+        :param sheet_id: id da planilha google sheets
+        :param page_name: nome da nova pagina da planilha
+        :param minimum_col:
+        :param minimum_row:
+        :param advanced_debug: ativa o sistema de logging se definido para True
+        :return: id da nova página criada
+        """
+        sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+        id = sheet.add_worksheet(title=page_name, rows=minimum_row, cols=minimum_col).id
+        if advanced_debug:
+            self.logging.debug("foi criada uma página nova com titulo " + str(page_name) + " seu id é " + str(id))
+        return id
+
+    def delete_page(self, sheet_id, page_number, advanced_debug=False):
+        """
+
+        :param sheet_id: id da planilha google sheets
+        :param page_number: pagina da planilha a ser editada numero da página da planilha
+        :param advanced_debug: ativa o sistema de logging se definido para True
+        :return:
+        """
+        sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+        page=self.select_page(sheet,page_number)
+        name = page.title
+        sheet.del_worksheet(page)
+        if advanced_debug:
+            self.logging.debug("pagina numero " + str(page_number) + "com nome " + str(name) + " foi deletada")
 
     def add_reader_sheet(self, sheet_id, email, advanced_debug=False):
         """
@@ -523,6 +546,13 @@ class MYG_Sheets():
                     sheet.get_worksheet(page_number).id) + " onde foram retornados os valores do intervalo: " + str(
                     import_range))
             return page.range(import_range)
+
+    def load_sheet(self, sheet_id, advanced_debug=False):
+        sheet = self.client.open_by_key(sheet_id)
+        if advanced_debug:
+            self.logging.debug("planilha carregada: " + str(type(sheet)))
+            # print(sheet.title)
+        return sheet
 
     def create_sheet(self, sheet_name, owner=None, public_read=False, public_write=False, advanced_debug=False):
         """
@@ -639,7 +669,7 @@ class MYG_Sheets():
             print(error.args)
             self.logging.error(error.args)
 
-    def add_data_row(self, sheet_id, page_number, elemento: dict, row_id=None,substitute=False, advanced_debug=False):
+    def add_data_row(self, sheet_id, page_number, elemento: dict, row_id=None, substitute=False, advanced_debug=False):
         """
 
         :param sheet_id: id da planilha google sheets
@@ -654,9 +684,9 @@ class MYG_Sheets():
         sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
         page = self.select_page(sheet=sheet, page_number=page_number, advanced_debug=advanced_debug)
         headers = page.row_values(1)
-        if row_id!=None:
+        if row_id != None:
             try:
-                if page.col_count() > row_id :
+                if page.col_count() > row_id:
                     raise Exception("unreachable row")
             except Exception as error:
                 print(error.args)
@@ -677,17 +707,17 @@ class MYG_Sheets():
 
         for header in headers:
             reordened[header] = elemento[header]
-        elemento=[]
+        elemento = []
         for reorder in reordened:
             elemento.append(reordened[reorder])
         if row_id != None:
-            vazio=True
+            vazio = True
             for value in page.row_values(row_id):
                 if value != "":
-                    vazio=False
+                    vazio = False
                     break
             if substitute and not vazio:
-                self.delete_data_row( sheet_id, page_number, row_id, advanced_debug=False)
+                self.delete_data_row(sheet_id, page_number, row_id, advanced_debug=False)
             page.insert_row(elemento, index=row_id)
             if advanced_debug:
                 self.logging.debug("a linha de numero " + str(row_id) + " foi adicionada")
@@ -709,33 +739,3 @@ class MYG_Sheets():
         sheet.get_worksheet(page_number).delete_row(row_id)
         if advanced_debug:
             self.logging.debug("a linha de numero " + str(row_id) + " foi apagada")
-
-    def add_page(self, sheet_id, page_name, minimum_col=24, minimum_row=10, advanced_debug=False):
-        """
-
-        :param sheet_id: id da planilha google sheets
-        :param page_name: nome da nova pagina da planilha
-        :param minimum_col:
-        :param minimum_row:
-        :param advanced_debug: ativa o sistema de logging se definido para True
-        :return: id da nova página criada
-        """
-        sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
-        id = sheet.add_worksheet(title=page_name, rows=minimum_row, cols=minimum_col).id
-        if advanced_debug:
-            self.logging.debug("foi criada uma página nova com titulo " + str(page_name) + " seu id é " + str(id))
-        return id
-
-    def delete_page(self, sheet_id, page_number, advanced_debug=False):
-        """
-
-        :param sheet_id: id da planilha google sheets
-        :param page_number: pagina da planilha a ser editada numero da página da planilha
-        :param advanced_debug: ativa o sistema de logging se definido para True
-        :return:
-        """
-        sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
-        name = self.client.open_by_key(sheet_id).get_worksheet(page_number).title
-        sheet.del_worksheet(page_number)
-        if advanced_debug:
-            self.logging.debug("pagina numero " + str(page_number) + "com nome " + str(name) + " foi deletada")
