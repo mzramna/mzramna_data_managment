@@ -424,13 +424,13 @@ class MYG_Sheets():
         page = None
         if type(page_number) == type(""):
             page = sheet.worksheet(page_number)
-            if advanced_debug:
-                self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + " selecionada")
         elif type(page_number) == type(1):
             page = sheet.get_worksheet(page_number)
-            if advanced_debug:
-                self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + " selecionada")
 
+        elif type(page_number) == gspread.models.Worksheet:
+            page = page_number
+        if advanced_debug:
+            self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + " selecionada")
         return page
 
     def add_page(self, sheet_id, page_name, minimum_col=24, minimum_row=1, advanced_debug=False):
@@ -458,7 +458,7 @@ class MYG_Sheets():
         :return:
         """
         sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
-        page=self.select_page(sheet,page_number)
+        page = self.select_page(sheet, page_number)
         name = page.title
         sheet.del_worksheet(page)
         if advanced_debug:
@@ -548,10 +548,12 @@ class MYG_Sheets():
             return page.range(import_range)
 
     def load_sheet(self, sheet_id, advanced_debug=False):
-        sheet = self.client.open_by_key(sheet_id)
+        if type(sheet_id) == gspread.models.Spreadsheet:
+            sheet = sheet_id
+        elif type(sheet_id) == type(""):
+            sheet = self.client.open_by_key(sheet_id)
         if advanced_debug:
             self.logging.debug("planilha carregada: " + str(type(sheet)))
-            # print(sheet.title)
         return sheet
 
     def create_sheet(self, sheet_name, owner=None, public_read=False, public_write=False, advanced_debug=False):
@@ -680,6 +682,13 @@ class MYG_Sheets():
         :param substitute: se a linha selecionada por row_id não estiver em branco substitui ela,caso contrário ela será passada para a linha a baixo
         :return:
         """
+        try:
+            if type(elemento)==type([]):
+                raise Exception("invalid data type,use add_multiple_data_row instead")
+        except Exception as error:
+            print(error.args)
+            self.logging.error(error.args)
+            return None
 
         sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
         page = self.select_page(sheet=sheet, page_number=page_number, advanced_debug=advanced_debug)
@@ -726,6 +735,26 @@ class MYG_Sheets():
             if advanced_debug:
                 self.logging.debug("a linha foi adicionada ao final do arquivo")
 
+    def add_multiple_data_row(self, sheet_id, page_number, elementos: [dict], row_id=None, substitute=False,
+                              advanced_debug=False):
+        """
+
+        :param sheet_id: id da planilha google sheets
+        :param page_number: pagina da planilha a ser editada
+        :param elemento: dictionary com os elementos a serem inseridos
+        :param row_id: numero da linha inicial a ser inserida,se ela ou qualquer uma subjacente estiver em branco apenas insere ao final do arquivo
+        :param advanced_debug: ativa o sistema de logging se definido para True
+        :param substitute: se a linha selecionada por row_id não estiver em branco substitui ela,caso contrário ela será passada para a linha a baixo,isso é valido para todas as linhas
+        :return:
+        """
+        sheet_id = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+        page_number = self.select_page(sheet_id, page_number, advanced_debug=advanced_debug)
+        for elemento in elementos:
+            self.add_data_row(sheet_id=sheet_id, page_number=page_number, elemento=elemento, row_id=row_id,
+                              substitute=substitute, advanced_debug=advanced_debug)
+            if type(row_id)==type(1):
+                row_id = row_id + 1
+
     def delete_data_row(self, sheet_id, page_number, row_id, advanced_debug=False):
         """
 
@@ -736,6 +765,14 @@ class MYG_Sheets():
         :return:
         """
         sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
-        sheet.get_worksheet(page_number).delete_row(row_id)
+        page= self.select_page(sheet,page_number, advanced_debug=advanced_debug)
+        page.delete_row(row_id)
         if advanced_debug:
             self.logging.debug("a linha de numero " + str(row_id) + " foi apagada")
+
+    def delete_multiple_data_row(self,  sheet_id, page_number, row_ids:[], advanced_debug=False):
+        row_ids.sort()
+        sheet_id=self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+        page_number = self.select_page(sheet_id,page_number, advanced_debug=advanced_debug)
+        for i in range(0,len(row_ids)):
+            self.delete_data_row(sheet_id, page_number, row_ids[i]-i, advanced_debug=advanced_debug)
