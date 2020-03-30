@@ -4,7 +4,6 @@ import logging
 import os
 from datetime import datetime
 from operator import itemgetter
-from pprint import pprint
 from random import randint
 
 import gspread
@@ -915,13 +914,12 @@ class DictTools:
             return None
         return index
 
-    def sorter(self, dictionary_array: [dict], orderBy, reverse=False, advanced_debug=False):
+    def sorter(self, dictionary_array: [dict], orderBy, reverse=False, remove_empty=False, advanced_debug=False):
         def integer_treat(input):
-            if input =="":
-                retorno= 0
+            if input == "":
+                retorno = 0
             else:
-                retorno= int(input)
-            print(str(retorno))
+                retorno = int(input)
             return int(retorno)
 
         if advanced_debug:
@@ -929,13 +927,18 @@ class DictTools:
             self.logging.debug(dictionary_array)
         orderBy = self.normalize_index(dictionary_array=dictionary_array, index=orderBy, advanced_debug=advanced_debug)
         if type(dictionary_array[0][orderBy]) == type(1):
-            retorno = sorted(dictionary_array,key=lambda element: integer_treat(element[orderBy]),
-                                            reverse=reverse)
+            retorno = sorted(dictionary_array, key=lambda element: integer_treat(element[orderBy]),
+                             reverse=reverse)
         elif type(dictionary_array[0][orderBy]) == type(""):
-            retorno = sorted(dictionary_array,key=itemgetter(orderBy), reverse=reverse)
+            retorno = sorted(dictionary_array, key=itemgetter(orderBy), reverse=reverse)
         if advanced_debug:
             self.logging.debug("pos ordenacao")
             self.logging.debug(retorno)
+        if remove_empty:
+            for i in retorno:
+                if i[orderBy] == "" or i[orderBy] == None or i[orderBy] == 0:
+                    print(i)
+                    retorno.remove(i)
         return retorno
 
     def case_changer(self, dictionary_array: [dict], column: [], case="lower", advanced_debug=False):
