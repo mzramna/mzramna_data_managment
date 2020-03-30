@@ -130,3 +130,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+*.json
+/credentials_G_sheets.json
+/quickstart-1551350520829-7f38463817d3.json

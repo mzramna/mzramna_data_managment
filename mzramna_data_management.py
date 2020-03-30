@@ -9,6 +9,7 @@ import gspread
 import mysql.connector
 import ntplib
 from gspread.models import Cell
+from oauth2client import client
 from oauth2client.client import OAuth2WebServerFlow
 from oauth2client.file import Storage
 from oauth2client.service_account import ServiceAccountCredentials
@@ -414,38 +415,46 @@ class MYntp:
 
 
 class oauthAcess:
+    def __init__(self):
+        self.scope = ["https://spreadsheets.google.com/feeds",
+                      "https://www.googleapis.com/auth/spreadsheets",
+                      "https://www.googleapis.com/auth/drive.file",
+                      "https://www.googleapis.com/auth/drive"]
 
-    def __init__(self, CLIENT_ID, CLIENT_SECRET):
-        self.CLIENT_ID = CLIENT_ID
-        self.CLIENT_SECRET = CLIENT_SECRET
-    def get_cred_from_browser(self):
-        flow = OAuth2WebServerFlow(client_id=self.CLIENT_ID,
-                                   client_secret=self.CLIENT_SECRET,
-                                   scope='https://spreadsheets.google.com/feeds https://docs.google.com/feeds',
-                                   redirect_uri='http://example.com/auth_return')
+    def get_cred_from_browser(self, CLIENT_ID="", CLIENT_SECRET="", json="",storage=""):
 
-        storage = Storage('creds.data')
+        if json == "" and CLIENT_ID != "" and CLIENT_SECRET != "":
+            flow = OAuth2WebServerFlow(client_id=CLIENT_ID,
+                                       client_secret=CLIENT_SECRET,
+                                       scope=self.scope,
+                                       redirect_uri='http://example.com/auth_return')
+        elif json != "" and CLIENT_ID == "" and CLIENT_SECRET == "":
+            flow = client.flow_from_clientsecrets(json, self.scope)
+
+        if storage == "":
+            storage = Storage('creds.data')
+        else:
+            storage = Storage(storage)
 
         credentials = run_flow(flow, storage)
 
-        print("access_token: %s" % credentials.access_token)
+        # print("access_token: %s" % credentials.access_token)
         return credentials
+
+    def get_cred_from_service_account_json(self, json):
+        return ServiceAccountCredentials.from_json_keyfile_name(json, self.scope)
 
 
 class MYG_Sheets:
-    def __init__(self, json_file, loggin_name="googleSheets", log_file="./googleSheets.log"):
+    def __init__(self, credential, loggin_name="googleSheets", log_file="./googleSheets.log"):
         """
         classe para gerenciar arquivos google sheets
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
+        :param credentialtype: pode ser "client" ou "service" dependendo do tipo de credencial o auth
         """
         self.logging = loggingSystem(loggin_name, arquivo=log_file)
-
-        self.creds = ServiceAccountCredentials.from_json_keyfile_name(json_file,
-                                                                      ["https://spreadsheets.google.com/feeds",
-                                                                       "https://www.googleapis.com/auth/spreadsheets",
-                                                                       "https://www.googleapis.com/auth/drive.file",
-                                                                       "https://www.googleapis.com/auth/drive"])
+        self.creds = credential
         self.client = gspread.authorize(self.creds)
 
     def select_page(self, sheet, page_number, advanced_debug=False):
