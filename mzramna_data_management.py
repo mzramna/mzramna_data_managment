@@ -415,31 +415,90 @@ class MYntp:
 
 
 class oauthAcess:
-    def __init__(self):
+    def __init__(self, loggin_name="oauthAcess", log_file="./oauthAcess.log"):
+        """
+        classe para gerenciar arquivos csv
+        :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
+        :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
+        """
+        self.logging = loggingSystem(loggin_name, arquivo=log_file)
         self.scope = ["https://spreadsheets.google.com/feeds",
                       "https://www.googleapis.com/auth/spreadsheets",
                       "https://www.googleapis.com/auth/drive.file",
                       "https://www.googleapis.com/auth/drive"]
 
-    def get_cred_from_browser(self, CLIENT_ID="", CLIENT_SECRET="", json="",storage=""):
+    def get_cred_from_browser(self, CLIENT_ID="", CLIENT_SECRET="", json="", storage="", advanced_debug=False):
+        """
+        caso selecionado o storage não será exibido no navegador a página de login,
+        caso contrário irá exibir abrir o navegador para realizar o login
+        :param CLIENT_ID: client id do google oauth
+        :param CLIENT_SECRET: client secret do google oauth
+        :param json:arquivo contendo infos de login do google oauth
+        :param storage: arquivo com as credenciais armazenadas do google oauth para não precisar abrir o navegador para realizar login
+        :param advanced_debug: ativa o sistema de logging se definido para True
+        :return:
+        """
 
-        if json == "" and CLIENT_ID != "" and CLIENT_SECRET != "":
-            flow = OAuth2WebServerFlow(client_id=CLIENT_ID,
-                                       client_secret=CLIENT_SECRET,
-                                       scope=self.scope,
-                                       redirect_uri='http://example.com/auth_return')
-        elif json != "" and CLIENT_ID == "" and CLIENT_SECRET == "":
-            flow = client.flow_from_clientsecrets(json, self.scope)
+        def processar(storage, flow=None, advanced_debug=advanced_debug):
+            if storage == "":
+                storage = Storage('creds.data')
+                credentials = run_flow(flow, storage)
+                if advanced_debug:
+                    self.logging.debug("login realizado sem titulo de arquivo de credencial")
+            elif storage != "":
+                storage = Storage(storage)
+                credentials = run_flow(flow, storage)
+                if advanced_debug:
+                    self.logging.debug("login realizado com titulo de arquivo de credencial")
 
-        if storage == "":
-            storage = Storage('creds.data')
-        else:
-            storage = Storage(storage)
+            return credentials
 
-        credentials = run_flow(flow, storage)
+        try:
+            if json == "" and CLIENT_ID != "" and CLIENT_SECRET != "":  # caso client_id e clinet_secret sejam inseridos
+                flow = OAuth2WebServerFlow(client_id=CLIENT_ID,
+                                           client_secret=CLIENT_SECRET,
+                                           scope=self.scope,
+                                           redirect_uri='http://example.com/auth_return')
+                credentials = processar(storage, flow, advanced_debug=advanced_debug)
+            elif json != "" and CLIENT_ID == "" and CLIENT_SECRET == "":  # caso seja passado arquivo json
+                flow = client.flow_from_clientsecrets(json, self.scope)
+                credentials = processar(storage, flow, advanced_debug=advanced_debug)
+            elif storage != "" and json == "" and CLIENT_ID == "" and CLIENT_SECRET == "":  # caso seja carregado uma credencial armazenada
+                credentials = Storage(storage).get()
+            elif json == "" and CLIENT_ID == "" and CLIENT_SECRET == "" and storage == "":  # caso todos parametros estejam em branco
+                raise Exception("invalid input")
 
-        # print("access_token: %s" % credentials.access_token)
-        return credentials
+            elif json != "" and CLIENT_ID != "" and CLIENT_SECRET != "" and storage != "":  # caso todos parametros estejam preenchidos
+                raise Exception("invalid input")
+            if advanced_debug:
+                self.logging.debug("access_token: %s" % credentials.access_token)
+            return credentials
+
+        except Exception as exp:
+            print(exp.args)
+            self.logging.error(exp.args)
+
+    def get_cred_automatic(self, json="", storage="", advanced_debug=False):
+        try:
+            if os.path.isfile(storage):
+                if advanced_debug:
+                    self.logging.debug("arquivo storage encontrado")
+                credentials= self.get_cred_from_browser(storage=storage, advanced_debug=advanced_debug)
+            elif not os.path.isfile(json):  # arquivo json não existe
+                raise Exception("invalid input")
+
+            elif not os.path.isfile(storage):  # arquivo storage n existe
+                if advanced_debug:
+                    self.logging.debug("não existe arquivo storage")
+                credentials= self.get_cred_from_browser(json=json, storage=storage, advanced_debug=advanced_debug)
+
+            if type(credentials) != client.OAuth2Credentials:
+                return self.get_cred_automatic(json=json, advanced_debug=advanced_debug)
+            else :
+                return credentials
+        except Exception as exp:
+            print(exp.args)
+            self.logging.error(exp.args)
 
     def get_cred_from_service_account_json(self, json):
         return ServiceAccountCredentials.from_json_keyfile_name(json, self.scope)
