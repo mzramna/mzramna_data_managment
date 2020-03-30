@@ -12,49 +12,14 @@ from gspread.models import Cell
 from oauth2client.service_account import ServiceAccountCredentials
 
 
-class MYfileManager:
-
-    def __init__(self, loggin_name="fileManager", log_file="./filemanager.log"):
+class MYcsv:
+    def __init__(self, loggin_name="csvManager", log_file="./csvManager.log"):
         """
-        classe para gerenciar arquivos
+        classe para gerenciar arquivos csv
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
         self.logging = loggingSystem(loggin_name, filename=log_file)
-
-    def saveFile(self, arrayToSave, arquivo, advanced_debug=False):
-        """
-        função para salvar arquivos de tipo json
-        :param arrayToSave: array de tipo dictionary para ser salvo no arquivo
-        :param arquivo: nome do arquivo a ser acessadonome do arquivo onde será salvo
-        :param advanced_debug: ativa o sistema de logging se definido para True
-        :return:
-        """
-        with open(arquivo, 'w+') as file:
-            if advanced_debug:
-                self.logging.debug("salvo dado no arquivo:" + str(arquivo))
-            for elemento in arrayToSave:
-                file.write(json.dumps(elemento) + "\n")
-            file.flush()
-            file.close()
-
-    def readFile(self, arquivo, advanced_debug=False):
-        """
-
-        :param arquivo: nome do arquivo a ser acessado
-        :param advanced_debug: ativa o sistema de logging se definido para True
-        :return:
-        """
-        retorno = []
-        with open(arquivo, 'r') as file:
-            if advanced_debug:
-                self.logging.debug("lido dado no arquivo:" + str(arquivo))
-            linha = file.readline()
-            while (linha != ""):
-                retorno.append(json.loads(linha))
-                linha = file.readline()
-            file.close()
-        return retorno
 
     def saveFileDictArray(self, arrayToSave, arquivo, advanced_debug=False):
         """
@@ -138,6 +103,50 @@ class MYfileManager:
                     file.flush()
                     file.close()
                     return retorno
+
+
+class MYjson:
+    def __init__(self, loggin_name="jsonManager", log_file="./jsonManager.log"):
+        """
+        classe para gerenciar arquivos json
+        :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
+        :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
+        """
+        self.logging = loggingSystem(loggin_name, filename=log_file)
+
+    def saveFile(self, arrayToSave, arquivo, advanced_debug=False):
+        """
+        função para salvar arquivos de tipo json
+        :param arrayToSave: array de tipo dictionary para ser salvo no arquivo
+        :param arquivo: nome do arquivo a ser acessadonome do arquivo onde será salvo
+        :param advanced_debug: ativa o sistema de logging se definido para True
+        :return:
+        """
+        with open(arquivo, 'w+') as file:
+            if advanced_debug:
+                self.logging.debug("salvo dado no arquivo:" + str(arquivo))
+            for elemento in arrayToSave:
+                file.write(json.dumps(elemento) + "\n")
+            file.flush()
+            file.close()
+
+    def readFile(self, arquivo, advanced_debug=False):
+        """
+
+        :param arquivo: nome do arquivo a ser acessado
+        :param advanced_debug: ativa o sistema de logging se definido para True
+        :return:
+        """
+        retorno = []
+        with open(arquivo, 'r') as file:
+            if advanced_debug:
+                self.logging.debug("lido dado no arquivo:" + str(arquivo))
+            linha = file.readline()
+            while (linha != ""):
+                retorno.append(json.loads(linha))
+                linha = file.readline()
+            file.close()
+        return retorno
 
 
 class loggingSystem:
@@ -377,7 +386,7 @@ class MYmysql:
         self.cursor.close()
 
 
-class MYntp():
+class MYntp:
     ntp = ntplib.NTPClient()
 
     def currentTime(self):
@@ -404,7 +413,7 @@ class MYntp():
         return datetime.utcfromtimestamp(time).strftime('%Y-%m-%d %H:%M:%S')
 
 
-class MYG_Sheets():
+class MYG_Sheets:
     def __init__(self, json_file, loggin_name="googleSheets", log_file="./googleSheets.log"):
         """
         classe para gerenciar arquivos google sheets
@@ -683,7 +692,7 @@ class MYG_Sheets():
         :return:
         """
         try:
-            if type(elemento)==type([]):
+            if type(elemento) == type([]):
                 raise Exception("invalid data type,use add_multiple_data_row instead")
         except Exception as error:
             print(error.args)
@@ -752,7 +761,7 @@ class MYG_Sheets():
         for elemento in elementos:
             self.add_data_row(sheet_id=sheet_id, page_number=page_number, elemento=elemento, row_id=row_id,
                               substitute=substitute, advanced_debug=advanced_debug)
-            if type(row_id)==type(1):
+            if type(row_id) == type(1):
                 row_id = row_id + 1
 
     def delete_data_row(self, sheet_id, page_number, row_id, advanced_debug=False):
@@ -765,14 +774,14 @@ class MYG_Sheets():
         :return:
         """
         sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
-        page= self.select_page(sheet,page_number, advanced_debug=advanced_debug)
+        page = self.select_page(sheet, page_number, advanced_debug=advanced_debug)
         page.delete_row(row_id)
         if advanced_debug:
             self.logging.debug("a linha de numero " + str(row_id) + " foi apagada")
 
-    def delete_multiple_data_row(self,  sheet_id, page_number, row_ids:[], advanced_debug=False):
+    def delete_multiple_data_row(self, sheet_id, page_number, row_ids: [], advanced_debug=False):
         row_ids.sort()
-        sheet_id=self.load_sheet(sheet_id, advanced_debug=advanced_debug)
-        page_number = self.select_page(sheet_id,page_number, advanced_debug=advanced_debug)
-        for i in range(0,len(row_ids)):
-            self.delete_data_row(sheet_id, page_number, row_ids[i]-i, advanced_debug=advanced_debug)
+        sheet_id = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+        page_number = self.select_page(sheet_id, page_number, advanced_debug=advanced_debug)
+        for i in range(0, len(row_ids)):
+            self.delete_data_row(sheet_id, page_number, row_ids[i] - i, advanced_debug=advanced_debug)
