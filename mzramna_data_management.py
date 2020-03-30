@@ -3,6 +3,8 @@ import json
 import logging
 import os
 from datetime import datetime
+from operator import itemgetter
+from pprint import pprint
 from random import randint
 
 import gspread
@@ -629,7 +631,7 @@ class MYG_Sheets:
         if advanced_debug:
             self.logging.debug("a planilha com id " + str(sheet_id) + " teve permissão de leitura publica habilitada")
 
-    def retrive_data(self, sheet_id, page_number, import_range="all",head=1, advanced_debug=False):
+    def retrive_data(self, sheet_id, page_number, import_range="all", head=1, advanced_debug=False):
         """
 
         :param sheet_id: id da planilha google sheets
@@ -900,11 +902,11 @@ class DictTools:
             if type(index) == type(""):
                 index = index
                 if advanced_debug:
-                    self.logging.debug("string")
+                    self.logging.debug("string: " + str(index))
             elif type(index) == type(1):
-                index = list(dictionary_array[0].keys())[index]
+                index = list(dictionary_array[0].keys())[index - 1]
                 if advanced_debug:
-                    self.logging.debug("integer")
+                    self.logging.debug("integer: " + str(index))
             else:
                 raise Exception("invalid array type")
         except Exception as error:
@@ -914,11 +916,23 @@ class DictTools:
         return index
 
     def sorter(self, dictionary_array: [dict], orderBy, reverse=False, advanced_debug=False):
+        def integer_treat(input):
+            if input =="":
+                retorno= 0
+            else:
+                retorno= int(input)
+            print(str(retorno))
+            return int(retorno)
+
         if advanced_debug:
             self.logging.debug("pre ordenacao")
             self.logging.debug(dictionary_array)
-        orderBy = self.normalize_index(dictionary_array=dictionary_array, index=orderBy)
-        retorno = sorted(dictionary_array, key=lambda k: k[orderBy], reverse=reverse)
+        orderBy = self.normalize_index(dictionary_array=dictionary_array, index=orderBy, advanced_debug=advanced_debug)
+        if type(dictionary_array[0][orderBy]) == type(1):
+            retorno = sorted(dictionary_array,key=lambda element: integer_treat(element[orderBy]),
+                                            reverse=reverse)
+        elif type(dictionary_array[0][orderBy]) == type(""):
+            retorno = sorted(dictionary_array,key=itemgetter(orderBy), reverse=reverse)
         if advanced_debug:
             self.logging.debug("pos ordenacao")
             self.logging.debug(retorno)
@@ -985,7 +999,7 @@ class DictTools:
                     processedArray[1].append(y)
                     processedArray[2].append(twodarray[x][y])
                 if advanced_debug:
-                    self.logging.debug("x="+str(x)+" y="+str(y)+" values="+str(twodarray[x][y]))
+                    self.logging.debug("x=" + str(x) + " y=" + str(y) + " values=" + str(twodarray[x][y]))
         if advanced_debug:
             self.logging.debug("conversao de array finalizada")
         return processedArray
