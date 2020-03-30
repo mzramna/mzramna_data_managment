@@ -560,6 +560,15 @@ class MYG_Sheets:
         if advanced_debug:
             self.logging.debug("pagina numero " + str(page_number) + "com nome " + str(name) + " foi deletada")
 
+    def recreate_page(self, sheet_id, page_number, advanced_debug=False):
+        sheet = self.load_sheet(sheet_id=sheet_id, advanced_debug=advanced_debug)
+        page = self.select_page(sheet, page_number=page_number, advanced_debug=advanced_debug)
+        page_col = page.col_count
+        page_row = page.row_count
+        page_name = page.title
+        self.delete_page(sheet, page, advanced_debug=advanced_debug)
+        page=self.add_page(sheet, page_name, minimum_col=page_col, minimum_row=page_row, advanced_debug=advanced_debug)
+        return page
     def add_reader_sheet(self, sheet_id, email, advanced_debug=False):
         """
 
@@ -928,6 +937,10 @@ class DictTools:
                         index[i] = index[i].lower()
                     elif case == "upper":
                         index[i] = index[i].upper()
+                    elif case == "capitalize":
+                        index[i] = index[i].capitalize()
+                    elif case == "title":
+                        index[i] = index[i].title()
                     else:
                         raise Exception("invalid case type")
                 retorno.append(index)
