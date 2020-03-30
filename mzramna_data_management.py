@@ -696,7 +696,8 @@ class MYG_Sheets:
         if advanced_debug:
             self.logging.debug("a planilha com id " + str(sheet_id) + " e nome de " + str(name) + " foi deletada")
 
-    def update_data_range(self, sheet_id, page_number, list_of_row:[], list_of_col:[], list_of_values:[], advanced_debug=False):
+    def update_data_range(self, sheet_id, page_number, list_of_row: [int], list_of_col: [int], list_of_values: [],
+                          advanced_debug=False):
         """
 
         :param sheet_id: id da planilha google sheets
@@ -961,9 +962,14 @@ class DictTools:
             arrays.append([])
             for element in dictionary_array:
                 arrays[-1].append(element[key])
+        if advanced_debug:
+            self.logging.debug("conversao de array finalizada")
         return arrays
 
     def dict_to_cood_array(self, dictionary_array: [dict], element_orientation="row", advanced_debug=False):
+        """
+
+        """
         twodarray = self.dict_to_multi_d_array(dictionary_array, advanced_debug=advanced_debug)
         if element_orientation == "row":
             processedArray = []
@@ -972,11 +978,14 @@ class DictTools:
         for x in range(0, len(twodarray)):
             for y in range(0, len(twodarray[x])):
                 if element_orientation == "row":
-                    tmp = [x, y, twodarray[y][x]]
+                    tmp = [x, y, twodarray[x][y]]
                     processedArray.append(tmp)
                 elif element_orientation == "col":
                     processedArray[0].append(x)
                     processedArray[1].append(y)
                     processedArray[2].append(twodarray[x][y])
-
+                if advanced_debug:
+                    self.logging.debug("x="+str(x)+" y="+str(y)+" values="+str(twodarray[x][y]))
+        if advanced_debug:
+            self.logging.debug("conversao de array finalizada")
         return processedArray
