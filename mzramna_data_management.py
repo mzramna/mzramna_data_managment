@@ -629,7 +629,7 @@ class MYG_Sheets:
         if advanced_debug:
             self.logging.debug("a planilha com id " + str(sheet_id) + " teve permissão de leitura publica habilitada")
 
-    def retrive_data(self, sheet_id, page_number, import_range="all", advanced_debug=False):
+    def retrive_data(self, sheet_id, page_number, import_range="all",head=1, advanced_debug=False):
         """
 
         :param sheet_id: id da planilha google sheets
@@ -645,7 +645,7 @@ class MYG_Sheets:
                 self.logging.debug("feita consulta na planilha: " + str(sheet_id) + " na página de nome " + str(
                     page.title) + " e numero " + str(
                     page.id) + " onde todos os dados foram retornados")
-            return page.get_all_records()
+            return page.get_all_records(head=head)
         else:
             if advanced_debug:
                 self.logging.debug("feita consulta na planilha: " + str(sheet_id) + " na página de nome " + str(
