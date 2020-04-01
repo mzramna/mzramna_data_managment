@@ -522,16 +522,32 @@ class MYG_Sheets:
 
     def select_page(self, sheet, page_number, advanced_debug=False):
         page = None
-        if type(page_number) == type(""):
-            page = sheet.worksheet(page_number)
-        elif type(page_number) == type(1):
-            page = sheet.get_worksheet(page_number)
+        try:
+            if type(page_number) == type(""):
+                page = sheet.worksheet(page_number)
+            elif type(page_number) == type(1):
+                page = sheet.get_worksheet(page_number)
 
-        elif type(page_number) == gspread.models.Worksheet:
-            page = page_number
-        if advanced_debug:
-            self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + " selecionada")
-        return page
+            elif type(page_number) == gspread.models.Worksheet:
+                page = page_number
+            if advanced_debug:
+                self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + " selecionada")
+        except gspread.exceptions.APIError as exp:
+            # print(exp.args[0]["code"])
+            if exp.args[0]["code"] == 429:
+                Utility().wait(self.wait_time)
+                page = self.select_page(sheet, page_number, advanced_debug)
+
+            else:
+                print(exp.arg[0])
+                self.logging.warning(exp.args[0])
+
+        except Exception as exp:
+            print(exp.arg)
+            self.logging.warning(exp.args)
+
+        finally:
+            return page
 
     def add_page(self, sheet_id, page_name, minimum_col=24, minimum_row=1, advanced_debug=False):
         """
@@ -551,8 +567,10 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 id = self.add_page(sheet_id, page_name, minimum_col, minimum_row, advanced_debug)
+            if exp.args[0]["code"]==400:
+                id = self.select_page(sheet_id,page_name,advanced_debug).id
             else:
                 print(exp.arg[0])
                 self.logging.warning(exp.args[0])
@@ -582,7 +600,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.delete_page(sheet_id, page_number, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
@@ -616,7 +634,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.add_reader_sheet(sheet_id, email, advanced_debug)
             else:
                 print(exp.args[0])
@@ -640,7 +658,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.add_writer_sheet(sheet_id, email, advanced_debug)
             else:
                 print(exp.args[0])
@@ -664,7 +682,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.change_owner_sheet(sheet_id, email, advanced_debug)
             else:
                 print(exp.args[0])
@@ -688,7 +706,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.change_sheet_to_public_read(sheet_id, advanced_debug)
             else:
                 print(exp.args[0])
@@ -712,7 +730,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.change_sheet_to_public_write(sheet_id, advanced_debug)
             else:
                 print(exp.args[0])
@@ -749,7 +767,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.retrive_data(sheet_id, page_number, import_range, head, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
@@ -786,7 +804,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 id = self.create_sheet(sheet_name, owner, public_read, public_write, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
@@ -808,7 +826,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.delete_sheet(sheet_id, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
@@ -841,7 +859,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.update_data_range(sheet_id, page_number, list_of_row, list_of_col, list_of_values, advanced_debug)
             else:
                 print(exp.args[0])
@@ -880,7 +898,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.update_data_cell(sheet_id, page_number, cell_cood, new_value, advanced_debug)
             else:
                 print(exp.args[0])
@@ -919,7 +937,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.delete_data_cell(sheet_id, page_number, cell_cood, advanced_debug)
             else:
                 print(exp.args[0])
@@ -980,7 +998,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.add_data_row(sheet_id, page_number, elemento, row_id, substitute, advanced_debug)
             else:
                 print(exp.args[0])
@@ -1012,7 +1030,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.add_multiple_data_row(sheet_id, page_number, elementos, row_id, substitute, advanced_debug)
             else:
                 print(exp.args[0])
@@ -1039,7 +1057,7 @@ class MYG_Sheets:
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
-                Utility.wait(self.wait_time)
+                Utility().wait(self.wait_time)
                 self.delete_data_row(sheet_id, page_number, row_id, advanced_debug)
             else:
                 print(exp.args[0])
