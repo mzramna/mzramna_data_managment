@@ -1286,10 +1286,10 @@ class MYG_Sheets:
             objetos = DictTools().dict_to_cood_array(dictionary_array=array, advanced_debug=advanced_debug,
                                                      element_orientation="col")
             rows = []
-            for i in range(0, len(objetos["y"])):
+            for i in range(0, len(objetos["x"])):
                 rows.append(row_id)
-            for i in range(0,len(objetos["x"])):
-                objetos["x"][i]=objetos["x"][i]+1
+            for i in range(0,len(objetos["y"])):
+                objetos["y"][i]=objetos["y"][i]+1
             if advanced_debug:
                 print("list_of_row: " + str(rows))
                 print("list_of_col: " + str(objetos["y"]))
@@ -1469,7 +1469,7 @@ class DictTools:
                     processedArray["x"].append(y )
                     processedArray["value"].append(twodarray[x][y])
                 if advanced_debug:
-                    self.logging.debug("x=" + y + " y=" + x + " values=" + str(twodarray[x][y]))
+                    self.logging.debug("x=" + str(y) + " y=" + str(x) + " values=" + str(twodarray[x][y]))
         if advanced_debug:
             self.logging.debug("conversao de array finalizada")
         return processedArray
