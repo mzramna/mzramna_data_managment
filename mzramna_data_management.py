@@ -509,7 +509,8 @@ class oauthAcess:
 
 
 class MYG_Sheets:
-    def __init__(self, credential, loggin_name="googleSheets", log_file="./googleSheets.log", wait_time=90, json="",
+    def __init__(self, credential=None, loggin_name="googleSheets", log_file="./googleSheets.log", wait_time=90,
+                 json="",
                  storage=""):
         """
         classe para gerenciar arquivos google sheets
@@ -517,12 +518,13 @@ class MYG_Sheets:
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param credentialtype: pode ser "client" ou "service" dependendo do tipo de credencial o auth
         """
-        if credential == None:
-            self.json = json
-            self.storage = storage
+        if credential == None and json != "" and storage != "":
             self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
-        else:
             self.creds = credential
+        elif credential != None:
+            self.creds = credential
+        self.json = json
+        self.storage = storage
         self.logging = loggingSystem(loggin_name, arquivo=log_file)
 
         self.client = gspread.authorize(self.creds)
