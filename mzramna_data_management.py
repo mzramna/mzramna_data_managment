@@ -510,8 +510,7 @@ class oauthAcess:
 
 class MYG_Sheets:
     def __init__(self, credential=None, loggin_name="googleSheets", log_file="./googleSheets.log", wait_time=90,
-                 json="",
-                 storage=""):
+                 json="",storage=""):
         """
         classe para gerenciar arquivos google sheets
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
@@ -520,7 +519,6 @@ class MYG_Sheets:
         """
         if credential == None and json != "" and storage != "":
             self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
-            self.creds = credential
         elif credential != None:
             self.creds = credential
         self.json = json
@@ -529,7 +527,6 @@ class MYG_Sheets:
 
         self.client = gspread.authorize(self.creds)
         self.wait_time = wait_time
-
     def recreate_cert(self):
         self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
 
@@ -1291,6 +1288,8 @@ class MYG_Sheets:
             rows = []
             for i in range(0, len(objetos["y"])):
                 rows.append(row_id)
+            for i in range(0,len(objetos["x"])):
+                objetos["x"][i]=objetos["x"][i]+1
             if advanced_debug:
                 print("list_of_row: " + str(rows))
                 print("list_of_col: " + str(objetos["y"]))
@@ -1463,14 +1462,14 @@ class DictTools:
         for x in range(0, len(twodarray)):
             for y in range(0, len(twodarray[x])):
                 if element_orientation == "row":
-                    tmp = {"y": x + 1, "x": y + 1, "value": twodarray[x][y]}
+                    tmp = {"y": x, "x": y , "value": twodarray[x][y]}
                     processedArray.append(tmp)
                 elif element_orientation == "col":
-                    processedArray["y"].append(x + 1)
-                    processedArray["x"].append(y + 1)
+                    processedArray["y"].append(x )
+                    processedArray["x"].append(y )
                     processedArray["value"].append(twodarray[x][y])
                 if advanced_debug:
-                    self.logging.debug("x=" + str(y + 1) + " y=" + str(x + 1) + " values=" + str(twodarray[x][y]))
+                    self.logging.debug("x=" + y + " y=" + x + " values=" + str(twodarray[x][y]))
         if advanced_debug:
             self.logging.debug("conversao de array finalizada")
         return processedArray
@@ -1496,14 +1495,15 @@ class Utility:
         sys.stdout.write("\r" + text)
         sys.stdout.flush()
 
-    def wait(self, tempo):
+    def wait(self, tempo,clean=False):
         espacador = ""
         for i in range(0, len(str(tempo))):
             espacador += " "
         for i in range(0, tempo + 1):
             self.rewrite("aguarde mais " + str(tempo - i) + " segundos para retornar o processo " + espacador)
             sleep(1)
-        self.rewrite("")
+        if clean:
+            self.rewrite("")
 
     def clear_log_files(self, diretorio="./"):
         self.remove_all_files_of_type("log", diretorio)
