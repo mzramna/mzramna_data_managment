@@ -530,6 +530,9 @@ class MYG_Sheets:
         self.client = gspread.authorize(self.creds)
         self.wait_time = wait_time
 
+    def recreate_cert(self):
+        self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+
     def select_page(self, sheet, page_number, advanced_debug=False):
         page = None
         try:
@@ -550,7 +553,7 @@ class MYG_Sheets:
                 return self.select_page(sheet, page_number, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 return self.select_page(sheet, page_number, advanced_debug)
             else:
                 print(exp.arg[0])
@@ -586,7 +589,7 @@ class MYG_Sheets:
                 id = self.select_page(sheet_id, page_name, advanced_debug).id
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 id = self.select_page(sheet_id, page_name, advanced_debug).id
             else:
                 print(exp.arg[0])
@@ -620,7 +623,7 @@ class MYG_Sheets:
                 self.delete_page(sheet_id, page_number, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.delete_page(sheet_id, page_number, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
@@ -649,7 +652,7 @@ class MYG_Sheets:
                                      advanced_debug=advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 page = self.add_page(sheet, page_name, minimum_col=page_col, minimum_row=page_row,
                                      advanced_debug=advanced_debug)
             else:
@@ -680,7 +683,7 @@ class MYG_Sheets:
                 self.add_reader_sheet(sheet_id, email, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.add_reader_sheet(sheet_id, email, advanced_debug)
             else:
                 print(exp.args[0])
@@ -710,7 +713,7 @@ class MYG_Sheets:
                 self.add_writer_sheet(sheet_id, email, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.add_writer_sheet(sheet_id, email, advanced_debug)
             else:
                 print(exp.args[0])
@@ -740,7 +743,7 @@ class MYG_Sheets:
                 self.change_owner_sheet(sheet_id, email, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.change_owner_sheet(sheet_id, email, advanced_debug)
             else:
                 print(exp.args[0])
@@ -770,7 +773,7 @@ class MYG_Sheets:
                 self.change_sheet_to_public_read(sheet_id, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.change_sheet_to_public_read(sheet_id, advanced_debug)
             else:
                 print(exp.args[0])
@@ -800,7 +803,7 @@ class MYG_Sheets:
                 self.change_sheet_to_public_write(sheet_id, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.change_sheet_to_public_write(sheet_id, advanced_debug)
             else:
                 print(exp.args[0])
@@ -842,7 +845,7 @@ class MYG_Sheets:
                 return self.retrive_data(sheet_id, page_number, import_range, head, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 return self.retrive_data(sheet_id, page_number, import_range, head, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
@@ -868,7 +871,7 @@ class MYG_Sheets:
                 self.load_sheet(sheet_id, advanced_debug=advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.load_sheet(sheet_id, advanced_debug=advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
@@ -906,7 +909,7 @@ class MYG_Sheets:
                 id = self.create_sheet(sheet_name, owner, public_read, public_write, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 id = self.create_sheet(sheet_name, owner, public_read, public_write, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
@@ -936,7 +939,7 @@ class MYG_Sheets:
                 self.delete_sheet(sheet_id, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.delete_sheet(sheet_id, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
@@ -977,7 +980,7 @@ class MYG_Sheets:
                 self.update_data_range(sheet_id, page_number, list_of_row, list_of_col, list_of_values, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.update_data_range(sheet_id, page_number, list_of_row, list_of_col, list_of_values, advanced_debug)
             else:
                 print(exp.args[0])
@@ -1025,7 +1028,7 @@ class MYG_Sheets:
                 self.update_data_cell(sheet_id, page_number, cell_cood, new_value, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.update_data_cell(sheet_id, page_number, cell_cood, new_value, advanced_debug)
             else:
                 print(exp.args[0])
@@ -1077,7 +1080,7 @@ class MYG_Sheets:
                 self.delete_data_cell(sheet_id, page_number, cell_cood, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.delete_data_cell(sheet_id, page_number, cell_cood, advanced_debug)
             else:
                 print(exp.args[0])
@@ -1153,7 +1156,7 @@ class MYG_Sheets:
                 self.add_data_row(sheet_id, page_number, elemento, row_id, substitute, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.add_data_row(sheet_id, page_number, elemento, row_id, substitute, advanced_debug)
             else:
                 print(exp.args[0])
@@ -1183,7 +1186,7 @@ class MYG_Sheets:
                 row = self.retrive_data_row(sheet_id, page_number, row_id, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 row = self.retrive_data_row(sheet_id, page_number, row_id, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
@@ -1224,7 +1227,7 @@ class MYG_Sheets:
                 self.add_multiple_data_row(sheet_id, page_number, elementos, row_id, substitute, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.add_multiple_data_row(sheet_id, page_number, elementos, row_id, substitute, advanced_debug)
             else:
                 print(exp.args[0])
@@ -1260,7 +1263,7 @@ class MYG_Sheets:
                 self.delete_data_row(sheet_id, page_number, row_id, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 self.delete_data_row(sheet_id, page_number, row_id, advanced_debug)
             else:
                 print(exp.args[0])
@@ -1302,7 +1305,7 @@ class MYG_Sheets:
                 row = self.retrive_data_row(sheet_id, page_number, row_id, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 row = self.retrive_data_row(sheet_id, page_number, row_id, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
@@ -1334,7 +1337,7 @@ class MYG_Sheets:
                 rows = self.delete_multiple_data_row(sheet_id, page_number, row_ids, advanced_debug)
             elif exp.args[0]["code"] == 401:
                 # Utility().wait(self.wait_time)
-                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.recreate_cert()
                 rows = self.delete_multiple_data_row(sheet_id, page_number, row_ids, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
