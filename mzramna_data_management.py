@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+import traceback
 from datetime import datetime
 from operator import itemgetter
 from random import randint
@@ -37,7 +38,7 @@ class MYcsv:
         :return:
         """
         titulos = arrayToSave[0].keys()
-        print(titulos)
+        # print(titulos)
         csvWrite = csv.DictWriter(open(arquivo, mode='a+'), fieldnames=titulos, delimiter=";")
         if advanced_debug:
             self.logging.debug("salvo dado no arquivo:" + str(arquivo))
@@ -508,15 +509,22 @@ class oauthAcess:
 
 
 class MYG_Sheets:
-    def __init__(self, credential, loggin_name="googleSheets", log_file="./googleSheets.log", wait_time=120):
+    def __init__(self, credential, loggin_name="googleSheets", log_file="./googleSheets.log", wait_time=90, json="",
+                 storage=""):
         """
         classe para gerenciar arquivos google sheets
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param credentialtype: pode ser "client" ou "service" dependendo do tipo de credencial o auth
         """
+        if credential == None:
+            self.json = json
+            self.storage = storage
+            self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+        else:
+            self.creds = credential
         self.logging = loggingSystem(loggin_name, arquivo=log_file)
-        self.creds = credential
+
         self.client = gspread.authorize(self.creds)
         self.wait_time = wait_time
 
@@ -524,30 +532,31 @@ class MYG_Sheets:
         page = None
         try:
             if type(page_number) == type(""):
-                page = sheet.worksheet(page_number)
+                return sheet.worksheet(page_number)
             elif type(page_number) == type(1):
-                page = sheet.get_worksheet(page_number)
-
+                return sheet.get_worksheet(page_number)
             elif type(page_number) == gspread.models.Worksheet:
-                page = page_number
+                return page_number
             if advanced_debug:
+                print("pagina de id " + str(page.id) + "e nome " + str(page.title) + " selecionada")
                 self.logging.debug("pagina de id " + str(page.id) + "e nome " + str(page.title) + " selecionada")
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
-                page = self.select_page(sheet, page_number, advanced_debug)
-
+                return self.select_page(sheet, page_number, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                return self.select_page(sheet, page_number, advanced_debug)
             else:
                 print(exp.arg[0])
                 self.logging.warning(exp.args[0])
-
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
-
-        finally:
-            return page
+            print(str(exp) + " select_page")
+            self.logging.error(str(exp) + " select_page")
 
     def add_page(self, sheet_id, page_name, minimum_col=24, minimum_row=1, advanced_debug=False):
         """
@@ -564,23 +573,27 @@ class MYG_Sheets:
             id = sheet.add_worksheet(title=page_name, rows=minimum_row, cols=minimum_col).id
             if advanced_debug:
                 self.logging.debug("foi criada uma página nova com titulo " + str(page_name) + " seu id é " + str(id))
+            return id
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
+            id = None
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 id = self.add_page(sheet_id, page_name, minimum_col, minimum_row, advanced_debug)
-            if exp.args[0]["code"]==400:
-                id = self.select_page(sheet_id,page_name,advanced_debug).id
+            elif exp.args[0]["code"] == 400:
+                id = self.select_page(sheet_id, page_name, advanced_debug).id
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                id = self.select_page(sheet_id, page_name, advanced_debug).id
             else:
                 print(exp.arg[0])
                 self.logging.warning(exp.args[0])
-
-        except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
-
-        finally:
+                traceback.print_exc()
             return id
+        except Exception as exp:
+            print(str(exp) + " add_page")
+            self.logging.error(str(exp) + " add_page")
 
     def delete_page(self, sheet_id, page_number, advanced_debug=False):
         """
@@ -598,26 +611,52 @@ class MYG_Sheets:
             if advanced_debug:
                 self.logging.debug("pagina numero " + str(page_number) + "com nome " + str(name) + " foi deletada")
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.delete_page(sheet_id, page_number, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.delete_page(sheet_id, page_number, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
+            print(str(exp) + " delete_page")
+            self.logging.error(str(exp) + " delete_page")
 
     def recreate_page(self, sheet_id, page_number, advanced_debug=False):
-        sheet = self.load_sheet(sheet_id=sheet_id, advanced_debug=advanced_debug)
-        page = self.select_page(sheet, page_number=page_number, advanced_debug=advanced_debug)
-        page_col = page.col_count
-        page_row = page.row_count
-        page_name = page.title
-        self.delete_page(sheet, page, advanced_debug=advanced_debug)
-        page = self.add_page(sheet, page_name, minimum_col=page_col, minimum_row=page_row,
-                             advanced_debug=advanced_debug)
-        return page
+        try:
+            sheet = self.load_sheet(sheet_id=sheet_id, advanced_debug=advanced_debug)
+            page = self.select_page(sheet, page_number=page_number, advanced_debug=advanced_debug)
+            page_col = page.col_count
+            page_row = page.row_count
+            page_name = page.title
+            self.delete_page(sheet, page, advanced_debug=advanced_debug)
+            page = self.add_page(sheet, page_name, minimum_col=page_col, minimum_row=page_row,
+                                 advanced_debug=advanced_debug)
+            return page
+        except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
+            # print(exp.args[0]["code"])
+            if exp.args[0]["code"] == 429:
+                Utility().wait(self.wait_time)
+                page = self.add_page(sheet, page_name, minimum_col=page_col, minimum_row=page_row,
+                                     advanced_debug=advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                page = self.add_page(sheet, page_name, minimum_col=page_col, minimum_row=page_row,
+                                     advanced_debug=advanced_debug)
+            else:
+                self.logging.warning(exp.args[0])
+                traceback.print_exc()
+            return page
+        except Exception as exp:
+            print(str(exp) + " delete_page")
+            self.logging.error(str(exp) + " delete_page")
 
     def add_reader_sheet(self, sheet_id, email, advanced_debug=False):
         """
@@ -632,16 +671,22 @@ class MYG_Sheets:
             if advanced_debug:
                 self.logging.debug("usuario " + str(email) + " adicionada nova pessoa com permissao de leitura")
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.add_reader_sheet(sheet_id, email, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.add_reader_sheet(sheet_id, email, advanced_debug)
             else:
                 print(exp.args[0])
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
+            print(str(exp) + " add_reader_sheet")
+            self.logging.error(str(exp) + " add_reader_sheet")
 
     def add_writer_sheet(self, sheet_id, email, advanced_debug=False):
         """
@@ -656,16 +701,22 @@ class MYG_Sheets:
             if advanced_debug:
                 self.logging.debug("usuario " + str(email) + " adicionada nova pessoa com permissao de escrita")
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.add_writer_sheet(sheet_id, email, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.add_writer_sheet(sheet_id, email, advanced_debug)
             else:
                 print(exp.args[0])
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
+            print(str(exp) + " add_writer_sheet")
+            self.logging.error(str(exp) + " add_writer_sheet")
 
     def change_owner_sheet(self, sheet_id, email, advanced_debug=False):
         """
@@ -680,16 +731,22 @@ class MYG_Sheets:
             if advanced_debug:
                 self.logging.debug("arquivo teve propriedade movida para o usuario " + str(email))
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.change_owner_sheet(sheet_id, email, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.change_owner_sheet(sheet_id, email, advanced_debug)
             else:
                 print(exp.args[0])
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
+            print(str(exp) + " change_owner_sheet")
+            self.logging.error(str(exp) + " change_owner_sheet")
 
     def change_sheet_to_public_read(self, sheet_id, advanced_debug=False):
         """
@@ -704,16 +761,22 @@ class MYG_Sheets:
                 self.logging.debug(
                     "a planilha com id " + str(sheet_id) + " teve permissão de escrita publica habilitada")
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.change_sheet_to_public_read(sheet_id, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.change_sheet_to_public_read(sheet_id, advanced_debug)
             else:
                 print(exp.args[0])
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
+            print(str(exp) + " change_sheet_to_public_read")
+            self.logging.error(str(exp) + " change_sheet_to_public_read")
 
     def change_sheet_to_public_write(self, sheet_id, advanced_debug=False):
         """
@@ -728,16 +791,22 @@ class MYG_Sheets:
                 self.logging.debug(
                     "a planilha com id " + str(sheet_id) + " teve permissão de leitura publica habilitada")
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.change_sheet_to_public_write(sheet_id, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.change_sheet_to_public_write(sheet_id, advanced_debug)
             else:
                 print(exp.args[0])
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
+            print(str(exp) + " change_sheet_to_public_write")
+            self.logging.error(str(exp) + " change_sheet_to_public_write")
 
     def retrive_data(self, sheet_id, page_number, import_range="all", head=1, advanced_debug=False):
         """
@@ -768,18 +837,43 @@ class MYG_Sheets:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
-                self.retrive_data(sheet_id, page_number, import_range, head, advanced_debug)
+                return self.retrive_data(sheet_id, page_number, import_range, head, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                return self.retrive_data(sheet_id, page_number, import_range, head, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
+        except Exception as exp:
+            print(str(exp) + " retrive_data")
+            self.logging.error(str(exp) + " retrive_data")
 
     def load_sheet(self, sheet_id, advanced_debug=False):
-        if type(sheet_id) == gspread.models.Spreadsheet:
-            sheet = sheet_id
-        elif type(sheet_id) == type(""):
-            sheet = self.client.open_by_key(sheet_id)
-        if advanced_debug:
-            self.logging.debug("planilha carregada: " + str(type(sheet)))
-        return sheet
+        try:
+            if type(sheet_id) == gspread.models.Spreadsheet:
+                sheet = sheet_id
+            elif type(sheet_id) == type(""):
+                sheet = self.client.open_by_key(sheet_id)
+            if advanced_debug:
+                self.logging.debug("planilha carregada: " + str(type(sheet)))
+            return sheet
+        except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
+            # print(exp.args[0]["code"])
+            if exp.args[0]["code"] == 429:
+                Utility().wait(self.wait_time)
+                self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+            else:
+                self.logging.warning(exp.args[0])
+                traceback.print_exc()
+        except Exception as exp:
+            print(str(exp) + " load_sheet")
+            self.logging.error(str(exp) + " load_sheet")
 
     def create_sheet(self, sheet_name, owner=None, public_read=False, public_write=False, advanced_debug=False):
         """
@@ -801,15 +895,24 @@ class MYG_Sheets:
                 self.change_sheet_to_public_write(id, advanced_debug=advanced_debug)
             if owner != None:
                 self.change_owner_sheet(sheet_id=id, email=owner, advanced_debug=advanced_debug)
+            return id
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 id = self.create_sheet(sheet_name, owner, public_read, public_write, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                id = self.create_sheet(sheet_name, owner, public_read, public_write, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
-        finally:
+                traceback.print_exc()
             return id
+        except Exception as exp:
+            print(str(exp) + " create_sheet")
+            self.logging.error(str(exp) + " create_sheet")
 
     def delete_sheet(self, sheet_id, advanced_debug=False):
         """
@@ -824,12 +927,21 @@ class MYG_Sheets:
             if advanced_debug:
                 self.logging.debug("a planilha com id " + str(sheet_id) + " e nome de " + str(name) + " foi deletada")
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.delete_sheet(sheet_id, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.delete_sheet(sheet_id, advanced_debug)
             else:
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
+        except Exception as exp:
+            print(str(exp) + " delete_sheet")
+            self.logging.error(str(exp) + " delete_sheet")
 
     def update_data_range(self, sheet_id, page_number, list_of_row: [int], list_of_col: [int], list_of_values: [],
                           advanced_debug=False):
@@ -861,12 +973,20 @@ class MYG_Sheets:
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.update_data_range(sheet_id, page_number, list_of_row, list_of_col, list_of_values, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.update_data_range(sheet_id, page_number, list_of_row, list_of_col, list_of_values, advanced_debug)
             else:
                 print(exp.args[0])
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
+            print(" update_data_range")
+            print(exp)
+            self.logging.error("update_data_range")
+            self.logging.error(exp)
+            traceback.print_exc()
 
     def update_data_cell(self, sheet_id, page_number, cell_cood, new_value, advanced_debug=False):
         """
@@ -896,16 +1016,25 @@ class MYG_Sheets:
                 print(error.args)
             self.logging.error(error.args)
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.update_data_cell(sheet_id, page_number, cell_cood, new_value, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.update_data_cell(sheet_id, page_number, cell_cood, new_value, advanced_debug)
             else:
                 print(exp.args[0])
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
+            print(" update_data_cell")
+            print(exp)
+            self.logging.error("update_data_cell")
+            self.logging.error(exp)
+            traceback.print_exc()
 
     def delete_data_cell(self, sheet_id, page_number, cell_cood, advanced_debug=False):
         """
@@ -931,22 +1060,33 @@ class MYG_Sheets:
                             "a celula de coordenada [" + str(cell_cood[0]) + "," + str(cell_cood[1]) + "] foi limpa")
                 else:
                     raise Exception('invalid input cell_cood', cell_cood)
-            except Exception as error:
-                print(error.args)
-                self.logging.error(error.args)
+            except Exception as exp:
+                print(" update_data_cell")
+                print(exp)
+
+                self.logging.error("update_data_cell")
+                self.logging.error(exp)
+                traceback.print_exc()
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.delete_data_cell(sheet_id, page_number, cell_cood, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.delete_data_cell(sheet_id, page_number, cell_cood, advanced_debug)
             else:
                 print(exp.args[0])
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
+            print(str(exp) + " delete_data_cell")
+            self.logging.error(str(exp) + " delete_data_cell")
 
-    def add_data_row(self, sheet_id, page_number, elemento: dict, row_id=None, substitute=False, advanced_debug=False):
+    def add_data_row(self, sheet_id, page_number, elemento: dict, row_id: int = 0, substitute=False,
+                     advanced_debug=False):
         """
 
         :param sheet_id: id da planilha google sheets
@@ -957,16 +1097,23 @@ class MYG_Sheets:
         :param substitute: se a linha selecionada por row_id não estiver em branco substitui ela,caso contrário ela será passada para a linha a baixo
         :return:
         """
+        if advanced_debug:
+            print("sheet id " + str(sheet_id))
+            print("page_number " + str(page_number))
+            print("row_id " + str(row_id))
+            print("substitute " + str(substitute))
+            print("elemento " + str(elemento))
         try:
             if type(elemento) == type([]):
                 raise Exception("invalid data type,use add_multiple_data_row instead")
-
             sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
             page = self.select_page(sheet=sheet, page_number=page_number, advanced_debug=advanced_debug)
             headers = page.row_values(1)
-            if row_id != None:
-                if page.col_count() > row_id:
-                    raise Exception("unreachable row")
+            if row_id != 0:
+                if page.row_count < row_id:
+                    raise Exception("unreachable row " + str(row_id) + " is not into the " + str(page.row_count))
+            if advanced_debug:
+                print("indo conferir headers")
             reordened = {}
             if headers != []:
                 for element in elemento:
@@ -974,13 +1121,14 @@ class MYG_Sheets:
                         raise Exception('header incompatible')
             else:
                 page.insert_row([k for k in elemento.keys()], index=1)
+                print([k for k in elemento.keys()])
 
             for header in headers:
                 reordened[header] = elemento[header]
             elemento = []
             for reorder in reordened:
                 elemento.append(reordened[reorder])
-            if row_id != None:
+            if row_id != 0:
                 vazio = True
                 for value in page.row_values(row_id):
                     if value != "":
@@ -996,16 +1144,55 @@ class MYG_Sheets:
                 if advanced_debug:
                     self.logging.debug("a linha foi adicionada ao final do arquivo")
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.add_data_row(sheet_id, page_number, elemento, row_id, substitute, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.add_data_row(sheet_id, page_number, elemento, row_id, substitute, advanced_debug)
             else:
                 print(exp.args[0])
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
+            print(" add_data_row")
+            print(exp)
+            self.logging.error("add_data_row")
+            self.logging.error(exp)
+            traceback.print_exc()
+
+    def retrive_data_row(self, sheet_id, page_number, row_id, advanced_debug=False):
+        try:
+            sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+            page = self.select_page(sheet=sheet, page_number=page_number, advanced_debug=advanced_debug)
+            if advanced_debug:
+                self.logging.debug("feita consulta na planilha: " + str(sheet_id) + " na página de nome " + str(
+                    page.title) + " e numero " + str(
+                    page.id) + " onde todos os dados foram retornados")
+            return page.row_values(row_id)
+        except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
+            # print(exp.args[0]["code"])
+            if exp.args[0]["code"] == 429:
+                Utility().wait(self.wait_time)
+                row = self.retrive_data_row(sheet_id, page_number, row_id, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                row = self.retrive_data_row(sheet_id, page_number, row_id, advanced_debug)
+            else:
+                self.logging.warning(exp.args[0])
+                traceback.print_exc()
+            return row
+        except Exception as exp:
+            print(" retrive_data_row")
+            print(exp)
+            self.logging.error("retrive_data_row")
+            self.logging.error(exp)
+            traceback.print_exc()
 
     def add_multiple_data_row(self, sheet_id, page_number, elementos: [dict], row_id=None, substitute=False,
                               advanced_debug=False):
@@ -1028,16 +1215,25 @@ class MYG_Sheets:
             if type(row_id) == type(1):
                 row_id = row_id + 1
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.add_multiple_data_row(sheet_id, page_number, elementos, row_id, substitute, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.add_multiple_data_row(sheet_id, page_number, elementos, row_id, substitute, advanced_debug)
             else:
                 print(exp.args[0])
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
+            print(" add_multiple_data_row")
+            print(exp)
+            self.logging.error("add_multiple_data_row")
+            self.logging.error(exp)
+            traceback.print_exc()
 
     def delete_data_row(self, sheet_id, page_number, row_id, advanced_debug=False):
         """
@@ -1055,23 +1251,99 @@ class MYG_Sheets:
             if advanced_debug:
                 self.logging.debug("a linha de numero " + str(row_id) + " foi apagada")
         except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
                 Utility().wait(self.wait_time)
                 self.delete_data_row(sheet_id, page_number, row_id, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                self.delete_data_row(sheet_id, page_number, row_id, advanced_debug)
             else:
                 print(exp.args[0])
                 self.logging.warning(exp.args[0])
+                traceback.print_exc()
         except Exception as exp:
-            print(exp.arg)
-            self.logging.warning(exp.args)
+            print(" delete_data_row")
+            print(exp)
+            self.logging.error("delete_data_row")
+            self.logging.error(exp)
+            traceback.print_exc()
+
+    def update_data_row(self, sheet_id, page_number, elemento: dict, row_id: int = 0, advanced_debug=False):
+        try:
+            sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+            page = self.select_page(sheet=sheet, page_number=page_number, advanced_debug=advanced_debug)
+            if advanced_debug:
+                self.logging.debug("feita consulta na planilha: " + str(sheet_id) + " na página de nome " +
+                                   str(page.title) + " e numero " + str(
+                    page.id) + " onde todos os dados foram retornados")
+            array = []
+            array.append(elemento)
+            objetos = DictTools().dict_to_cood_array(dictionary_array=array, advanced_debug=advanced_debug,
+                                                     element_orientation="col")
+            rows = []
+            for i in range(0, len(objetos["y"])):
+                rows.append(row_id)
+            if advanced_debug:
+                print("list_of_row: " + str(rows))
+                print("list_of_col: " + str(objetos["y"]))
+                print("list_of_values: " + str(objetos["value"]))
+            self.update_data_range(sheet_id=sheet_id, page_number=page, list_of_row=rows,
+                                   list_of_col=objetos["y"], list_of_values=objetos["value"],
+                                   advanced_debug=advanced_debug)
+        except gspread.exceptions.APIError as exp:
+            # print(exp.args[0]["code"])
+            if exp.args[0]["code"] == 429:
+                Utility().wait(self.wait_time)
+                row = self.retrive_data_row(sheet_id, page_number, row_id, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                row = self.retrive_data_row(sheet_id, page_number, row_id, advanced_debug)
+            else:
+                self.logging.warning(exp.args[0])
+                traceback.print_exc()
+            return row
+        except Exception as exp:
+            print("update_data_row sheet_id:" + str(sheet_id) + " page_number:" + str(page_number) + " elemento:" + str(
+                elemento) + " row_id:" + str(row_id))
+            print(exp)
+            traceback.print_exc()
+            self.logging.error(
+                "update_data_row sheet_id:" + str(sheet_id) + " page_number:" + str(page_number) + " elemento:" + str(
+                    elemento) + " row_id:" + str(row_id))
+            self.logging.error(exp)
+            traceback.print_exc()
 
     def delete_multiple_data_row(self, sheet_id, page_number, row_ids: [], advanced_debug=False):
-        row_ids.sort()
-        sheet_id = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
-        page_number = self.select_page(sheet_id, page_number, advanced_debug=advanced_debug)
-        for i in range(0, len(row_ids)):
-            self.delete_data_row(sheet_id, page_number, row_ids[i] - i, advanced_debug=advanced_debug)
+        try:
+            row_ids.sort()
+            sheet_id = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+            page_number = self.select_page(sheet_id, page_number, advanced_debug=advanced_debug)
+            for i in range(0, len(row_ids)):
+                self.delete_data_row(sheet_id, page_number, row_ids[i] - i, advanced_debug=advanced_debug)
+        except gspread.exceptions.APIError as exp:
+            traceback.print_exc()
+            # print(exp.args[0]["code"])
+            if exp.args[0]["code"] == 429:
+                Utility().wait(self.wait_time)
+                rows = self.delete_multiple_data_row(sheet_id, page_number, row_ids, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.creds = oauthAcess().get_cred_automatic(json=self.json, storage=self.storage)
+                rows = self.delete_multiple_data_row(sheet_id, page_number, row_ids, advanced_debug)
+            else:
+                self.logging.warning(exp.args[0])
+                traceback.print_exc()
+            return rows
+        except Exception as exp:
+            print(" delete_multiple_data_row")
+            print(exp)
+            self.logging.error("delete_multiple_data_row")
+            self.logging.error(exp)
+            traceback.print_exc()
 
 
 class DictTools:
@@ -1095,11 +1367,14 @@ class DictTools:
                     self.logging.debug("integer: " + str(index))
             else:
                 raise Exception("invalid array type")
-        except Exception as error:
-            print(error.args)
-            self.logging.error(error.args)
+            return index
+        except Exception as exp:
+            print(" normalize_index")
+            print(exp)
+            self.logging.error("normalize_index")
+            self.logging.error(exp)
+            traceback.print_exc()
             return None
-        return index
 
     def sorter(self, dictionary_array: [dict], orderBy, reverse=False, remove_empty=False, advanced_debug=False):
         def integer_treat(input):
@@ -1151,14 +1426,15 @@ class DictTools:
                     else:
                         raise Exception("invalid case type")
                 retorno.append(index)
+            if advanced_debug:
+                self.logging.debug("pos ordenacao")
+                self.logging.debug(retorno)
+            return retorno
         except Exception as error:
             print(error.args)
             self.logging.error(error.args)
+            traceback.print_exc()
             return None
-        if advanced_debug:
-            self.logging.debug("pos ordenacao")
-            self.logging.debug(retorno)
-        return retorno
 
     def dict_to_multi_d_array(self, dictionary_array: [dict], advanced_debug=False):
         arrays = []
@@ -1178,21 +1454,36 @@ class DictTools:
         if element_orientation == "row":
             processedArray = []
         elif element_orientation == "col":
-            processedArray = [], [], []
+            processedArray = {"x": [], "y": [], "value": []}
         for x in range(0, len(twodarray)):
             for y in range(0, len(twodarray[x])):
                 if element_orientation == "row":
-                    tmp = [x, y, twodarray[x][y]]
+                    tmp = {"y": x + 1, "x": y + 1, "value": twodarray[x][y]}
                     processedArray.append(tmp)
                 elif element_orientation == "col":
-                    processedArray[0].append(x)
-                    processedArray[1].append(y)
-                    processedArray[2].append(twodarray[x][y])
+                    processedArray["y"].append(x + 1)
+                    processedArray["x"].append(y + 1)
+                    processedArray["value"].append(twodarray[x][y])
                 if advanced_debug:
-                    self.logging.debug("x=" + str(x) + " y=" + str(y) + " values=" + str(twodarray[x][y]))
+                    self.logging.debug("x=" + str(y + 1) + " y=" + str(x + 1) + " values=" + str(twodarray[x][y]))
         if advanced_debug:
             self.logging.debug("conversao de array finalizada")
         return processedArray
+
+    def compare_values(self, elementoA: {}, elementoB: {}):
+        if elementoA.keys() == elementoB.keys():
+            for i in elementoA.keys():
+                if elementoA[i] != elementoB[i]:
+                    return False
+            return True
+        else:
+            return False
+
+    def is_empty(self, elemento):
+        for i in elemento:
+            if i != 0 or i != "":
+                return False
+        return True
 
 
 class Utility:
@@ -1204,19 +1495,19 @@ class Utility:
         espacador = ""
         for i in range(0, len(str(tempo))):
             espacador += " "
-        for i in range(0, tempo):
+        for i in range(0, tempo + 1):
             self.rewrite("aguarde mais " + str(tempo - i) + " segundos para retornar o processo " + espacador)
             sleep(1)
-        print("")
+        self.rewrite("")
 
-    def clear_log_files(self, diretorio):
-        self.remove_all_files_of_type(diretorio, "log")
+    def clear_log_files(self, diretorio="./"):
+        self.remove_all_files_of_type("log", diretorio)
 
-    def remove_all_files_of_type(self, diretorio, extension):
+    def remove_all_files_of_type(self, extension, diretorio="./"):
         arquivos = os.listdir(diretorio)
         for arquivo in arquivos:
             if arquivo.endswith("." + extension):
-                os.remove(os.path.join(arquivo, arquivo))
+                os.remove(os.path.join(diretorio, arquivo))
     # exemplo funcional em linux de substituição de multiplas linhas
     # with output(output_type='dict') as output_lines:
     #     for i in range(10):
