@@ -965,8 +965,23 @@ class MYG_Sheets:
         try:
             sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
             for page in dictionary:
-                self.add_page(sheet_id,page, advanced_debug=advanced_debug, minimum_col=len(dictionary[page][0].keys())+1, minimum_row=len(dictionary[page])+1)
-                self.add_multiple_data_row(sheet, page, dictionary[page], advanced_debug=advanced_debug)
+                if self.page_exist(sheet, page, advanced_debug):
+                    page = self.select_page(sheet, page, advanced_debug=advanced_debug)
+                    if len(dictionary[page]) + 1 == page.row_count:
+                        linhas=self.retrive_page_data(sheet,page,advanced_debug=advanced_debug)
+                        for linha in range(0,len(linhas)):
+                            if linhas[linha] ==  dictionary[page][linha]:
+                                pass
+                            else:
+                                self.replace_data_row(sheet,page,dictionary[page][linha],linha, advanced_debug)
+                    else:
+                        self.recreate_page(sheet,page,advanced_debug=advanced_debug)
+                        self.add_multiple_data_row(sheet, page, dictionary[page], advanced_debug=advanced_debug)
+                else:
+                    self.add_page(sheet_id, page, advanced_debug=advanced_debug,
+                                  minimum_col=len(dictionary[page][0].keys()) + 1,
+                                  minimum_row=len(dictionary[page]) + 1)
+                    self.add_multiple_data_row(sheet, page, dictionary[page], advanced_debug=advanced_debug)
         except gspread.exceptions.APIError as exp:
             # print(exp.args[0]["code"])
             if exp.args[0]["code"] == 429:
@@ -979,6 +994,31 @@ class MYG_Sheets:
             else:
                 self.logging.warning(exp.args[0])
                 traceback.print_exc()
+        except Exception as exp:
+            print(str(exp) + " retrive_data")
+            self.logging.error(str(exp) + " retrive_data")
+
+    def page_exist(self, sheet_id, page_name, advanced_debug):
+        try:
+            sheet = self.load_sheet(sheet_id, advanced_debug=advanced_debug)
+            for title in sheet.worksheets():
+                if title.title() == page_name:
+                    return True
+            return False
+        except gspread.exceptions.APIError as exp:
+            # print(exp.args[0]["code"])
+            existe = None
+            if exp.args[0]["code"] == 429:
+                Utility().wait(self.wait_time)
+                existe = self.page_exist(sheet_id, page_name, advanced_debug)
+            elif exp.args[0]["code"] == 401:
+                # Utility().wait(self.wait_time)
+                self.recreate_cert()
+                existe = self.page_exist(sheet_id, page_name, advanced_debug)
+            else:
+                self.logging.warning(exp.args[0])
+                traceback.print_exc()
+            return existe
         except Exception as exp:
             print(str(exp) + " retrive_data")
             self.logging.error(str(exp) + " retrive_data")
